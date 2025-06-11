@@ -1,0 +1,3 @@
+[submodule "mdc"]
+	path = mdc
+	url = https://github.com/gwastro/ml-mock-data-challenge-1.git
