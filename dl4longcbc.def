@@ -1,0 +1,38 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+%post
+  apt-get -y update
+  apt-get -y upgrade
+  apt-get -y install \
+    build-essential \
+    wget \
+    bzip2 \
+    git
+  apt-get -y clean
+  wget -c https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+  /bin/sh Miniforge3-Linux-x86_64.sh -bfp /opt/miniforge
+  /opt/miniforge/bin/conda shell.bash hook > /opt/miniforge/conda_init.sh
+  . /opt/miniforge/conda_init.sh
+  conda create -n dl4longcbc python=3.11
+  conda activate dl4longcbc
+  conda install -c conda-forge opencv numpy scipy scikit-learn jax matplotlib jupyter h5py
+  conda install -c conda-forge lal PyCBC
+  conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+
+%environment
+  # conda が使えるように path を追加
+  export PATH="/opt/miniforge/bin:$PATH"
+  # conda の shell hook を読み込む
+  eval "$(conda shell.bash hook)"
+  # conda 環境を activate
+  conda activate dl4longcbc
+
+%labels
+  Author Takahiro S Yamamoto
+  Version 0.0.1
+
+%help
+  Python environment for dl4longcbc project
+
+%runscript

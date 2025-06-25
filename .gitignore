@@ -8,3 +8,9 @@ data
 figure/
 note/
 notebook/
+*.sif
+*.out
+*.log
+submit.sh
+apptainer_test.py
+apptainer_test.sh
