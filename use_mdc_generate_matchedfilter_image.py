@@ -9,6 +9,7 @@ import pycbc.psd
 from pycbc.conversions import mass1_from_mchirp_eta, mass2_from_mchirp_eta
 from pycbc.waveform import get_fd_waveform
 from pycbc.filter import matched_filter
+from dl4longcbc.utils import if_not_exist_makedir
 
 
 def make_snrmap_coarse(snrmap, kfilter):
@@ -23,6 +24,7 @@ def make_snrmap_coarse(snrmap, kfilter):
 def main(args):
 
     outdir = args.outdir
+    if_not_exist_makedir(outdir)
     file_foreground = args.foreground
     file_injection = args.injection
 
@@ -134,7 +136,9 @@ def main(args):
                 dataavg = make_snrmap_coarse(snrlist, kfilter).to(torch.float32)
                 torch.save(dataavg, f'{outdir}/inputs_{int(duration):d}_{dataidx:d}.pth')
                 dataidx += 1
-
+                if dataidx==100:
+                    import sys
+                    sys.exit(1)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate matched filter images by using MDC dataset')

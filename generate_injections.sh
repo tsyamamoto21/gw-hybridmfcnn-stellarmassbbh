@@ -5,9 +5,9 @@
 #PBS -o log/generate_injections.out
 #PBS -e log/generate_injections.out
 
-DATASETTYPE=4
-SEEDNUMBER=256
-OUTPUTDIR=data/mdc/ds4/
+DATASETTYPE=1
+SEEDNUMBER=512
+OUTPUTDIR=data/mdc/ds1_val/
 OUTPUT_INJECTION_FILE=$OUTPUTDIR/injection.hdf
 OUTPUT_FOREGROUND_FILE=$OUTPUTDIR/foreground.hdf
 DURATION=2592000
@@ -24,4 +24,3 @@ apptainer exec --nv --bind `pwd` dl4longcbc.sif ./mdc/generate_data.py\
 	--duration $DURATION\
 	--verbose
 cp generate_injections.sh $OUTPUTDIR
-cp log/generate_injections.out $OUTPUTDIR
