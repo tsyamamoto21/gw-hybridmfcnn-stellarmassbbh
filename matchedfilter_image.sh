@@ -1,9 +1,10 @@
 #!/bin/bash
-#PBS -l elapstim_req=00:30:00
+#PBS -l elapstim_req=24:00:00
+#PBS -l cpunum_job=48
 #PBS -q gpu
 #PBS -A ML4GW
-#PBS -o mfimage.out
-#PBS -e mfimage.out
+#PBS -j o
+#PBS -o log/mfimage_noise.out
 
 INJECTION_FILE=data/mdc/ds1/injection.hdf
 FOREGROUND_FILE=data/mdc/ds1/foreground.hdf
@@ -13,7 +14,8 @@ module load cuda/12.1.0
 cd $PBS_O_WORKDIR
 pwd
 apptainer exec --bind `pwd` dl4longcbc.sif ./use_mdc_generate_matchedfilter_image.py\
-	--outdir=data/dataset_250625/train/cbc\
+	--outdir=data/dataset_250625/train/noise\
 	--foreground=$FOREGROUND_FILE\
 	--injection=$INJECTION_FILE\
+    --offevent
 
