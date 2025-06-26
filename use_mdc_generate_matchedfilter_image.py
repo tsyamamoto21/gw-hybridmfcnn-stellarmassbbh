@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import h5py
 import torch
 import argparse
@@ -34,7 +35,7 @@ class SignalProcessingParameters:
         # FFT for PSD estimation
         self.tfft = tfft
         self.toverlap = self.tfft / 2
-        self.fftlength = int(self.tfft / 2)
+        self.fftlength = int(self.tfft * self.fs)
         self.overlaplength = int(self.fftlength / 2)
 
         # MF params
@@ -98,8 +99,8 @@ def matchedfilter_core(file_foreground: str, template_bank: list, outdir: str, s
     # Tukey window
     window = tukey(sp.mfdatalength, sp.tukey_alpha)
 
+    tclist_for_short_segment = np.array(timestamps.tclist_for_short_segment)
     if args.offevent:
-        tclist_for_short_segment = np.array(timestamps.tclist_for_short_segment)
         tclist_for_short_segment = (tclist_for_short_segment[:-1] + tclist_for_short_segment[1:]) / 2
 
     # Load a hdf file.
@@ -111,6 +112,7 @@ def matchedfilter_core(file_foreground: str, template_bank: list, outdir: str, s
     psd_h_interp = pycbc.psd.interpolate(psd_h, delta_f=1.0 / sp.duration)
     psd_l = pycbc.psd.welch(xl1, seg_len=sp.fftlength, seg_stride=sp.overlaplength, avg_method='median-mean')
     psd_l_interp = pycbc.psd.interpolate(psd_l, delta_f=1.0 / sp.duration)
+    print(f"[PID {os.getpid()}] Processing {timestamps.start_time}: PSD estimated")
 
     dataidx = 0
     for tc in tclist_for_short_segment:
@@ -129,16 +131,22 @@ def matchedfilter_core(file_foreground: str, template_bank: list, outdir: str, s
                 snrlist[1, i] = torch.from_numpy(abs(rho_l).numpy())[sp.kcrop_left: sp.kcrop_right]
 
             dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
-            torch.save(dataavg, f'{outdir}/inputs_{timestamps.start_time_str}_{int(sp.duration):d}_{dataidx:d}.pth')
+            torchfilename = f'{outdir}/inputs_{timestamps.start_time_str}_{int(sp.duration):d}_{dataidx:d}.pth'
+            torch.save(dataavg, torchfilename)
+            print(f'[PID {os.getpid()}] Torch file ({torchfilename}) is saved.') 
             dataidx += 1
-
+            if dataidx == 3:
+                break
 
 def main(args):
 
     outdir = args.outdir
+    print(f'Results will be output the directory {outdir}')
     if_not_exist_makedir(outdir)
     file_foreground = args.foreground
+    print(f'Foreground file = {file_foreground}')
     file_injection = args.injection
+    print(f'Injection file = {file_injection}')
 
     sp = SignalProcessingParameters(
         duration=16,
@@ -183,7 +191,7 @@ def main(args):
 
     # Run the main code
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        futures = [executor.submit(matchedfilter_core, file_foreground, file_injection, outdir, sp, ts) for ts in segment_timestamp_list]
+        futures = [executor.submit(matchedfilter_core, file_foreground, template_bank, outdir, sp, ts) for ts in segment_timestamp_list]
         results = [f.result() for f in futures]
     print(results)
 
