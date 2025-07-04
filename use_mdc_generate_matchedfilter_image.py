@@ -59,7 +59,7 @@ class SegmentTimestamps:
         self.tclist_for_short_segment: list = None
 
 
-def get_timestamps(file_foreground: str, file_injection: str, sp: SignalProcessingParameters):
+def get_timestamps(file_foreground: str, file_injection: str, sp: SignalProcessingParameters, nstart: int, nend: int):
     # Get start time and end time
     with h5py.File(file_foreground, 'r') as fo:
         x = fo['H1'].keys()
@@ -81,7 +81,7 @@ def get_timestamps(file_foreground: str, file_injection: str, sp: SignalProcessi
     # Store timestamps in instances
     segment_timestamp_list = []
     #for n in range(nsegment):
-    for n in range(12):
+    for n in range(nstart, nend):
         st = SegmentTimestamps()
         st.start_time_str = start_time_strlist[n]
         st.start_time = start_time_list[n]
@@ -147,6 +147,8 @@ def main(args):
     print(f'Foreground file = {file_foreground}')
     file_injection = args.injection
     print(f'Injection file = {file_injection}')
+    nstart = args.nstart
+    nend = args.nend
 
     sp = SignalProcessingParameters(
         duration=16,
@@ -160,7 +162,7 @@ def main(args):
     )
 
     # Get timestamp informations
-    segment_timestamp_list = get_timestamps(file_foreground, file_injection, sp)
+    segment_timestamp_list = get_timestamps(file_foreground, file_injection, sp, nstart, nend)
 
     # Make a template bank
     approximant_tmp = 'IMRPhenomXPHM'
@@ -202,5 +204,7 @@ if __name__ == '__main__':
     parser.add_argument('--foreground', type=str, help='Foreground file. This must be HDF5. See MDC wiki for the detail.')
     parser.add_argument('--injection', type=str, help='Injection file. This must be HDF5. See MDC wiki for the detail.')
     parser.add_argument('--offevent', action='store_true', help='Use the data where the signal is not injected.')
+    parser.add_argument('--nstart', type=int, default=0, help='(To be discarded) Start index of the segment')
+    parser.add_argument('--nend', type=int, default=129, help='(To be discarded) End index of the segment')
     args = parser.parse_args()
     main(args)
