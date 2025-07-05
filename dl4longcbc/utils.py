@@ -4,6 +4,7 @@ utils.py
 import os
 import numpy as np
 from pycbc.waveform import TimeSeries
+import matplotlib.pyplot as plt
 from .gw_parameters import remnantspin, ISCO_radius
 from astropy.constants import G, c, M_sun, pc
 GRAV_CONST = G.value
@@ -86,3 +87,16 @@ def adjust_waveform_length(hp: TimeSeries, hc: TimeSeries, tsignal: float, merge
     if len(hc) != int(tsignal * fs):
         hc = hc.crop(1.0 / fs, 0.0)
     return hp, hc
+
+
+def plot_training_curve(trainloss, validateloss, filename):
+    tr_epoch_list = [row[2] for row in trainloss]
+    trloss = [row[1] for row in trainloss]
+    val_epoch_list = [row[2] for row in validateloss]
+    valloss = [row[1] for row in validateloss]
+    plt.figure()
+    plt.plot(tr_epoch_list, trloss, label='train')
+    plt.plot(val_epoch_list, valloss, label='validate')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.savefig(filename)
