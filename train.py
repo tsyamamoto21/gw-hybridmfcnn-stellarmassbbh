@@ -14,7 +14,8 @@ from torchvision.transforms import RandomCrop
 import torchmetrics
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
-from dl4longcbc.dataset import MyDataset, load_dataset
+# from dl4longcbc.dataset import MyDataset, load_dataset
+from dl4longcbc.dataset import make_pathlist_and_labellist, LabelDataset
 from dl4longcbc.net import instantiate_neuralnetwork
 from dl4longcbc.utils import if_not_exist_makedir, plot_training_curve
 
@@ -51,12 +52,20 @@ def main(args):
     transforms = nn.Sequential(
         RandomCrop((input_height, input_width))
     )
-    inputs, labels = load_dataset(f'{config.dataset.datadir}/train/', ['noise', 'cbc'], (img_channel, img_height, img_width))
-    tensor_dataset_tr = MyDataset(inputs, labels, transforms)
-    dataloader_tr = DataLoader(tensor_dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
-    inputs, labels = load_dataset(f'{config.dataset.datadir}/validate/', ['noise', 'cbc'], (img_channel, img_height, img_width))
-    tensor_dataset_val = MyDataset(inputs, labels, transforms)
-    dataloader_val = DataLoader(tensor_dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
+
+    inputpaths, labels = make_pathlist_and_labellist(f'{config.dataset.datadir}/train/', ['noise', 'cbc'], [0, 1])
+    dataset_tr = LabelDataset(inputpaths, labels, transform=transforms)
+    dataloader_tr = DataLoader(dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
+    inputpaths, labels = make_pathlist_and_labellist(f'{config.dataset.datadir}/validate/', ['noise', 'cbc'], [0, 1])
+    dataset_val = LabelDataset(inputpaths, labels, transform=transforms)
+    dataloader_val = DataLoader(dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
+
+    # inputs, labels = load_dataset(f'{config.dataset.datadir}/train/', ['noise', 'cbc'], (img_channel, img_height, img_width))
+    # tensor_dataset_tr = MyDataset(inputs, labels, transforms)
+    # dataloader_tr = DataLoader(tensor_dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
+    # inputs, labels = load_dataset(f'{config.dataset.datadir}/validate/', ['noise', 'cbc'], (img_channel, img_height, img_width))
+    # tensor_dataset_val = MyDataset(inputs, labels, transforms)
+    # dataloader_val = DataLoader(tensor_dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
 
     # Create model
     model = instantiate_neuralnetwork(config)

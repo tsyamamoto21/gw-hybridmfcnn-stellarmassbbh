@@ -1,6 +1,5 @@
 import os
 import re
-import tqdm
 import torch
 from torch.utils.data import Dataset
 
@@ -20,6 +19,26 @@ class MyDataset(Dataset):
             x = self.transform(x)
         y = self.target[index]
         return x, y
+
+
+class LabelDataset(torch.utils.data.Dataset):
+    '''
+    data: List of paths
+    label: List of labels
+    '''
+    def __init__(self, data, label, transform=None):
+        self.transform = transform
+        self.data = data
+        self.data_num = len(data)
+        self.label = label
+
+    def __len__(self):
+        return self.data_num
+
+    def __getitem__(self, idx):
+        out_data = self.transform(torch.load(self.data[idx]))
+        out_label = torch.long(self.label[idx])
+        return out_data, out_label
 
 
 def normalize_tensor(x):
@@ -65,3 +84,30 @@ def load_dataset(datadir, labelnamelist, imgsize, labellist=None):
             print(f'{labelname}: {idx} th data loaded.')
             idx += 1
     return normalize_tensor(input_tensors), label_tensors
+
+
+def make_pathlist_and_labellist(datadir, labelnames, labels=None):
+    '''
+    e.g.
+    datadir is the direcotry.
+    labelnames = ['noise', 'cbc'] or ['noise', 'cbc', 'glitch']
+    labels = [0, 1] or [0, 1, 2]
+    '''
+
+    # The number of classes
+    nclass = len(labelnames)
+    if labels is None:
+        labels = [i for i in range(nclass)]
+
+    # List up all pth files in the direcotry
+    filelist = []
+    labellist = []
+    pattern = re.compile(r"inputs_\d{10}_\d{2}_\d+\.pth")
+    for label, labelname in zip(labels, labelnames):
+        target_dir = f'{datadir}/{labelname}/'
+        assert os.path.exists(target_dir), f"Directory `{target_dir}` does not exist."
+        all_files_in_target_dir = os.listdir(target_dir)
+        all_file_paths = [f for f in all_files_in_target_dir if pattern.fullmatch(f)]
+        filelist.extend(all_file_paths)
+        labellist.extend([label] * len(all_file_paths))
+    return filelist, labellist
