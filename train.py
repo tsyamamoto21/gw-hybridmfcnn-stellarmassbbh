@@ -51,10 +51,10 @@ def main(args):
     transforms = nn.Sequential(
         RandomCrop((input_height, input_width))
     )
-    inputs, labels = load_dataset(f'{config.dataset.datadir}/train/', ['noise', 'cbc'], 10000, (img_channel, img_height, img_width))
+    inputs, labels = load_dataset(f'{config.dataset.datadir}/train/', ['noise', 'cbc'], (img_channel, img_height, img_width))
     tensor_dataset_tr = MyDataset(inputs, labels, transforms)
     dataloader_tr = DataLoader(tensor_dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
-    inputs, labels = load_dataset(f'{config.dataset.datadir}/validate/', ['noise', 'cbc'], 1000, (img_channel, img_height, img_width))
+    inputs, labels = load_dataset(f'{config.dataset.datadir}/validate/', ['noise', 'cbc'], (img_channel, img_height, img_width))
     tensor_dataset_val = MyDataset(inputs, labels, transforms)
     dataloader_val = DataLoader(tensor_dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
 
@@ -147,7 +147,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a neural network")
-    parser.add_argument('config', type=str, default='./config/config_train.yaml', help='Configure file.')
+    parser.add_argument('--config', type=str, default='./config/config_train.yaml', help='Configure file.')
+    parser.add_argument('--dirname', type=str, default=None, help='Output directory')
     args = parser.parse_args()
 
     assert os.path.exists(args.config), f"File `{args.config}` does not exit."

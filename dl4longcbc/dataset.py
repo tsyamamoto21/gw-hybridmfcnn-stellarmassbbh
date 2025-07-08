@@ -1,5 +1,6 @@
 import os
 import re
+import tqdm
 import torch
 from torch.utils.data import Dataset
 
@@ -22,13 +23,13 @@ class MyDataset(Dataset):
 
 
 def normalize_tensor(x):
-    # x.size = (1, H, W) is assumed.
-    xmin = torch.min(x)
-    xmax = torch.max(x)
+    # x.size = (N, C, H, W) is assumed.
+    xmin = torch.amin(x, dim=(1, 2, 3), keepdims=True)
+    xmax = torch.amax(x, dim=(1, 2, 3), keepdims=True)
     return (x - xmin) / (xmax - xmin)
 
 
-def load_dataset(datadir, labelnamelist, ndata, imgsize, labellist=None, ninit=0):
+def load_dataset(datadir, labelnamelist, imgsize, labellist=None):
     '''
     Assuming the file path '{datadir}/{label}/inputs_{GPSTime}_{foreground index}_{data index}.pth'.
     '''
@@ -43,12 +44,14 @@ def load_dataset(datadir, labelnamelist, ndata, imgsize, labellist=None, ninit=0
     pattern = re.compile(r"inputs_\d{10}_\d{2}_\d+\.pth")
 
     ndatalist = {}
+    ndata = 0
     for labelname in labelnamelist:
         target_dir = f'{datadir}/{labelname}/'
         assert os.path.exists(target_dir), f"Directory `{target_dir}` does not exist."
         all_files = os.listdir(target_dir)
         filelist[labelname] = [f for f in all_files if pattern.fullmatch(f)]
         ndatalist[labelname] = len(filelist[labelname])
+        ndata += ndatalist[labelname]
 
     # Prepare input tensors and label tensors
     input_tensors = torch.zeros((ndata, C, H, W), dtype=torch.float32)
@@ -57,7 +60,8 @@ def load_dataset(datadir, labelnamelist, ndata, imgsize, labellist=None, ninit=0
     for (label, labelname) in zip(labellist, labelnamelist):
         target_dir = f'{datadir}/{labelname}/'
         for j in range(ndatalist[labelname]):
-            input_tensors[idx] = normalize_tensor(torch.load(f"{target_dir}/{filelist[labelname][j]}"))
+            input_tensors[idx] = torch.load(f"{target_dir}/{filelist[labelname][j]}")
             label_tensors[idx] = label
+            print(f'{labelname}: {idx} th data loaded.')
             idx += 1
-    return input_tensors, label_tensors
+    return normalize_tensor(input_tensors), label_tensors
