@@ -36,8 +36,8 @@ class LabelDataset(torch.utils.data.Dataset):
         return self.data_num
 
     def __getitem__(self, idx):
-        out_data = self.transform(torch.load(self.data[idx]))
-        out_label = torch.long(self.label[idx])
+        out_data = self.transform(torch.load(self.data[idx], weights_only=True))
+        out_label = torch.tensor(self.label[idx], dtype=torch.long)
         return out_data, out_label
 
 
@@ -107,7 +107,7 @@ def make_pathlist_and_labellist(datadir, labelnames, labels=None):
         target_dir = f'{datadir}/{labelname}/'
         assert os.path.exists(target_dir), f"Directory `{target_dir}` does not exist."
         all_files_in_target_dir = os.listdir(target_dir)
-        all_file_paths = [f for f in all_files_in_target_dir if pattern.fullmatch(f)]
+        all_file_paths = [f'{target_dir}/{f}' for f in all_files_in_target_dir if pattern.fullmatch(f)]
         filelist.extend(all_file_paths)
         labellist.extend([label] * len(all_file_paths))
     return filelist, labellist

@@ -11,7 +11,8 @@ from torch.utils.data import DataLoader
 from torchinfo import summary
 from torchvision.transforms import RandomCrop
 # from torcheval.metrics import MulticlassAccuracy
-import torchmetrics
+# import torchmetrics
+from torchmetrics.classification import Accuracy
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
 # from dl4longcbc.dataset import MyDataset, load_dataset
@@ -79,8 +80,7 @@ def main(args):
     criterion = torch.nn.CrossEntropyLoss().to(device)
     optimizer = instantiate(config.train.optimizer, model.parameters())
     optimizer.zero_grad()
-    # metric = MulticlassAccuracy(num_classes=2)
-    metric = torchmetrics.Accuracy(task='binary')
+    accuracy = Accuracy(task="multiclass", num_classes=2).to(device)
     # Train model
     trainloss_list = []  # [gpstime, train loss, epoch]
     validateloss_list = []  # [gpstime, validate loss, epoch]
@@ -97,15 +97,15 @@ def main(args):
             # Forward + backward + optimize
             outputs = model(inputs)
             loss = criterion(outputs, labels)
-            accuracy = metric(outputs, labels)
+            accuracy.update(outputs, labels)
             running_loss += loss.item()
             loss.backward()
             optimizer.step()
         running_loss /= (i + 1)
-        accuracy = metric.compute()
+        acc = accuracy.compute()
         trainloss_list.append([time.time(), running_loss, epoch + 1])
-        trainaccuracy_list.append([time.time(), accuracy, epoch + 1])
-        metric.reset()
+        trainaccuracy_list.append([time.time(), acc.cpu(), epoch + 1])
+        accuracy.reset()
 
         # Evaluate model
         valloss = 0
@@ -116,14 +116,14 @@ def main(args):
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 valloss += criterion(outputs, labels).item()
-                accuracy = metric(outputs, labels)
+                accuracy.update(outputs, labels)
         valloss /= (j + 1)
-        accuracy = metric.compute()
+        acc = accuracy.compute()
         validateloss_list.append([time.time(), valloss, epoch + 1])
-        validateaccuracy_list.append([time.time(), accuracy, epoch + 1])
+        validateaccuracy_list.append([time.time(), acc.cpu(), epoch + 1])
         print(f"[Epoch {epoch + 1}] Validate loss: {valloss:.5f}")
         # Reset metric
-        metric.reset()
+        accuracy.reset()
 
     train_endtime = time.time()
     print(f'Run time: {train_endtime - train_starttime} [sec]')

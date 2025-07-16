@@ -36,9 +36,9 @@ class MFImageCNN(nn.Module):
     def __init__(self, config: DictConfig):
         super(MFImageCNN, self).__init__()
         layers = []
-        in_channels = config.net.channel
-        in_height = config.net.height
-        in_width = config.net.width
+        in_channels = config.net.input_channel
+        in_height = config.net.input_height
+        in_width = config.net.input_width
         for i in range(config.net.num_conv_layers):
             # Convolutional layers
             out_channels = config.net[f"conv_{i+1}_out_channels"]
