@@ -1,103 +1,82 @@
 #!/usr/bin/env python
 import argparse
-import datetime
 import torch
 import torch.nn as nn
 from torch.nn.functional import softmax
 from torch.utils.data import DataLoader
 from torchvision.transforms import RandomCrop
-from hydra import initialize
-import mlflow
-from dl4longcbc.dataset import load_dataset, MyDataset
-
-
-class TestResult(torch.nn.Module):
-    def __init__(self, result_dict):
-        super(TestResult, self).__init__()
-        self.label = nn.Parameter(result_dict["label"], requires_grad=False)
-        self.output = nn.Parameter(result_dict["output"], requires_grad=False)
+from omegaconf import OmegaConf
+from dl4longcbc.dataset import make_pathlist_and_labellist, LabelDataset
+from dl4longcbc.net import instantiate_neuralnetwork
+from dl4longcbc.dataset import TestResult
 
 
 # >>> test loop >>>
 def main(args):
-    # Initialize Hydra
-    initialize(version_base=None, config_path="./config", job_name=args.experiment_name)
-    # Load config
-    # cfg = compose(config_name="config_test.yaml")
-    # Set experiment
-    mlflow.set_tracking_uri("./data/mlruns")
-    mlflow.set_experiment(args.experiment_name)
 
-    # Output directory under `artifacts`
-    outdir = args.outdir
+    modeldir = args.modeldir
     datadir = args.datadir
+    outdir = args.outdir
     ndata = args.ndata
-    run_id = args.run_id
+    config_tr = OmegaConf.load(f'{modeldir}/config_train.yaml')
 
-    # time zone
-    jst = datetime.timezone(datetime.timedelta(hours=9), 'JST')
     # Set device
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # >>> Start mlflow run >>>
-    mlflow.start_run(run_id=run_id)
-    run = mlflow.get_run(mlflow.active_run().info.run_id)
-    artifact_directory = run.info.artifact_uri.replace("file:", "")
-    # <<< Start mlflow run <<<
-
     # >>> Load model >>>
-    model = mlflow.pytorch.load_model(f"{artifact_directory}/models")
+    model = instantiate_neuralnetwork(config_tr)
+    model.load_state_dict(torch.load(f'{modeldir}/model.pth', weights_only=True))
     model = model.to(device)
     model.eval()
     # <<< Load model <<<
 
-    # Make output and label tensors
-    outputtensor = torch.zeros((ndata, 2))
-    labeltensor = torch.zeros((ndata,), dtype=torch.long)
-
-    # Prepare test dataset
-    nb = args.batchsize
+    # Make dataloader
+    # img_height = config_tr.dataset.img_height
+    # img_width = config_tr.dataset.img_width
+    # img_channel = config_tr.dataset.img_channel
+    input_height = config_tr.net.input_height
+    input_width = config_tr.net.input_width
+    # input_channel = config_tr.net.input_channel
     transforms = nn.Sequential(
-        RandomCrop((128, 128))
+        RandomCrop((input_height, input_width))
     )
+    nb = args.batchsize
+    inputpaths, labels = make_pathlist_and_labellist(f'{datadir}/test/', ['noise'], [0])
+    dataset = LabelDataset(inputpaths, labels, transform=transforms)
+    dataloader = DataLoader(dataset, batch_size=nb, shuffle=False, drop_last=False, num_workers=8)
+    ndata = len(inputpaths)
 
-    nsplit = 1
-    ndata_per_split = ndata // nsplit
-    for idx_split in range(nsplit):
-        idx_offset = idx_split * ndata_per_split
-        inputs, labels = load_dataset(f'{datadir}/', ['cbc'], ndata_per_split, (128, 192), labellist=[1], ninit=idx_split * ndata_per_split)
-        tensor_dataset = MyDataset(inputs, labels, transforms)
-        dataloader = DataLoader(tensor_dataset, shuffle=False, drop_last=False, batch_size=nb, num_workers=4)
-    
-        # Test model
-        with torch.no_grad():
-            for i, data in enumerate(dataloader, 0):
-                inputs, labels = data
-                inputs = inputs.to(device)
-                outputs = softmax(model(inputs).cpu(), dim=1)
-                kini = i * nb + idx_offset
-                kend = (i + 1) * nb + idx_offset
-                outputtensor[kini: kend] = outputs
-                labeltensor[kini: kend] = labels
+    outputtensor = torch.empty((ndata, 2), dtype=torch.float32)
+    labeltensor = torch.empty((ndata,), dtype=torch.long)
+    # Test model
+    with torch.no_grad():
+        idx_offset = 0
+        for i, data in enumerate(dataloader, 0):
+            inputs, labels = data
+            inputs = inputs.to(device)
+            outputs = softmax(model(inputs).cpu(), dim=1)
+            kini = idx_offset
+            kend = idx_offset + len(inputs)
+            outputtensor[kini: kend] = outputs
+            labeltensor[kini: kend] = labels
+            idx_offset = kend
     labeltensor = nn.functional.one_hot(labeltensor, num_classes=2)
-    print(f"[{datetime.datetime.now(jst)}] Test: Test data processed.")
+    print("Test: Test data processed.")
     result_dict = {
         "label": labeltensor,
         "output": outputtensor
     }
     result_model = TestResult(result_dict)
-    mlflow.pytorch.log_model(result_model, outdir)
-    print(f"[{datetime.datetime.now(jst)}] Test: Result saved.")
-    mlflow.end_run()
+    torch.save(result_model, f"{outdir}/result.pth")
+    print("Test: Result saved.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="parse args")
     parser.add_argument('--outdir', type=str, help='output directory name')
+    parser.add_argument('--modeldir', type=str, help='Directory where the trained model is saved.')
     parser.add_argument('--datadir', type=str, help='dataset directory (including ***/test/ or noise)')
     parser.add_argument('--ndata', type=int, help='The number of test data')
-    parser.add_argument('--experiment_name', type=str, help='Experiment name')
-    parser.add_argument('--run_id', type=str, help='Run ID')
     parser.add_argument('--batchsize', type=int, default=200, help='Batch size')
     args = parser.parse_args()
 

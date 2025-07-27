@@ -1,7 +1,15 @@
 import os
 import re
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset
+
+
+class TestResult(torch.nn.Module):
+    def __init__(self, result_dict):
+        super(TestResult, self).__init__()
+        self.label = nn.Parameter(result_dict["label"], requires_grad=False)
+        self.output = nn.Parameter(result_dict["output"], requires_grad=False)
 
 
 class MyDataset(Dataset):
