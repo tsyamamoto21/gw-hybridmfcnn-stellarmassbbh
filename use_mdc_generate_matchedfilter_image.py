@@ -69,18 +69,25 @@ def get_timestamps(file_foreground: str, file_injection: str, sp: SignalProcessi
         end_time_list = [int(len(fo['H1'][start_time_strlist[i]]) / sp.fs) + start_time_list[i] for i in range(nsegment)]
 
     # Get the injection time stamps
-    with h5py.File(file_injection, 'r') as fo:
-        tclist_from_hdf5 = fo['tc'][:]
-    # Assign a segment to an injection
     tclist = [[] for _ in range(nsegment)]
-    for idx in range(len(tclist_from_hdf5)):
+    if file_injection is None:
+        # Assign a segment to an injection
         for n in range(nsegment):
-            if (start_time_list[n] <= tclist_from_hdf5[idx]) * (tclist_from_hdf5[idx] <= end_time_list[n]):
-                tclist[n].append(tclist_from_hdf5[idx])
+            duration = end_time_list[n] - start_time_list[n]
+            ntc = int(np.floor(duration / 32))
+            for i in range(ntc):
+                tclist[n].append(start_time_list[n] + 16 + i * 32)
+    else:
+        with h5py.File(file_injection, 'r') as fo:
+            tclist_from_hdf5 = fo['tc'][:]
+        # Assign a segment to an injection
+        for idx in range(len(tclist_from_hdf5)):
+            for n in range(nsegment):
+                if (start_time_list[n] <= tclist_from_hdf5[idx]) * (tclist_from_hdf5[idx] <= end_time_list[n]):
+                    tclist[n].append(tclist_from_hdf5[idx])
 
     # Store timestamps in instances
     segment_timestamp_list = []
-    #for n in range(nsegment):
     for n in range(nstart, nend):
         st = SegmentTimestamps()
         st.start_time_str = start_time_strlist[n]
@@ -135,8 +142,9 @@ def matchedfilter_core(file_foreground: str, template_bank: list, outdir: str, s
             dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
             torchfilename = f'{outdir}/inputs_{timestamps.start_time_str}_{int(sp.duration):d}_{dataidx:d}.pth'
             torch.save(dataavg, torchfilename)
-            #print(f'[PID {os.getpid()}] Torch file ({torchfilename}) is saved.') 
+            # print(f'[PID {os.getpid()}] Torch file ({torchfilename}) is saved.')
             dataidx += 1
+
 
 def main(args):
 
@@ -202,7 +210,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate matched filter images by using MDC dataset')
     parser.add_argument('--outdir', type=str, help='Directory where the data will be saved.')
     parser.add_argument('--foreground', type=str, help='Foreground file. This must be HDF5. See MDC wiki for the detail.')
-    parser.add_argument('--injection', type=str, help='Injection file. This must be HDF5. See MDC wiki for the detail.')
+    parser.add_argument('--injection', type=str, default=None, help='Injection file. This must be HDF5. See MDC wiki for the detail.')
     parser.add_argument('--offevent', action='store_true', help='Use the data where the signal is not injected.')
     parser.add_argument('--nstart', type=int, default=0, help='(To be discarded) Start index of the segment')
     parser.add_argument('--nend', type=int, default=129, help='(To be discarded) End index of the segment')
