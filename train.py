@@ -56,10 +56,10 @@ def main(args):
 
     inputpaths, labels = make_pathlist_and_labellist(f'{config.dataset.datadir}/train/', ['noise', 'cbc'], [0, 1])
     dataset_tr = LabelDataset(inputpaths, labels, transform=transforms)
-    dataloader_tr = DataLoader(dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
+    dataloader_tr = DataLoader(dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=8)
     inputpaths, labels = make_pathlist_and_labellist(f'{config.dataset.datadir}/validate/', ['noise', 'cbc'], [0, 1])
     dataset_val = LabelDataset(inputpaths, labels, transform=transforms)
-    dataloader_val = DataLoader(dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=4)
+    dataloader_val = DataLoader(dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=8)
 
     # inputs, labels = load_dataset(f'{config.dataset.datadir}/train/', ['noise', 'cbc'], (img_channel, img_height, img_width))
     # tensor_dataset_tr = MyDataset(inputs, labels, transforms)

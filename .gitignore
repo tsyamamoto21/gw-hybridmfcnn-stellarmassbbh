@@ -17,3 +17,4 @@ notebook/
 submit.sh
 apptainer_test.py
 apptainer_test.sh
+*.ipynb
