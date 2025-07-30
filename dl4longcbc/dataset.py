@@ -49,6 +49,17 @@ class LabelDataset(torch.utils.data.Dataset):
         return out_data, out_label
 
 
+class NormalizeTensor(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        # x: torch.Tensor (C, H, W)
+        xmin = torch.min(x)
+        xmax = torch.max(x)
+        return (x - xmin) / (xmax - xmin)
+
+
 def normalize_tensor(x):
     # x.size = (N, C, H, W) is assumed.
     xmin = torch.amin(x, dim=(1, 2, 3), keepdims=True)

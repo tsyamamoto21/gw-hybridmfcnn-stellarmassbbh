@@ -2,7 +2,7 @@
 #------- qsub option -------
 #PBS -q gpu
 #PBS -A ML4GW
-#PBS -l elapstim_req=16:00:00
+#PBS -l elapstim_req=10:00:00
 #PBS -j o
 #PBS -o log/neuralnet/train.log
 
