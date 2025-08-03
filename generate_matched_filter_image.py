@@ -20,7 +20,7 @@ import concurrent.futures
 
 
 INJECTION_TIME_STEP = 24
-NINJECTION_PER_FILE = 100
+NINJECTION_PER_FILE = 10000
 
 
 def make_snrmap_coarse(snrmap, kfilter):
