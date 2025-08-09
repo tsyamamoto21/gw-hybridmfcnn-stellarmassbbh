@@ -113,7 +113,7 @@ def calculate_snr(injection_file: str, psd, sp: SignalProcessingParameters, dete
                 f_lower=sp.low_frequency_cutoff)
             rhosq_tot = 0
             for ifo in ['H1', 'L1']:
-                fp, fc = detectors[ifo].antenna_pattern(tc, ra, dec, pol)
+                fp, fc = detectors[ifo].antenna_pattern(ra, dec, pol, tc)
                 h = fp * hp + fc * hc
                 rhosq_ifo = sigmasq(h, psd, low_frequency_cutoff=sp.low_frequency_cutoff, high_frequency_cutoff=sp.high_frequency_cutoff)
                 rhosq_tot += rhosq_ifo
@@ -129,19 +129,23 @@ def calculate_snr(injection_file: str, psd, sp: SignalProcessingParameters, dete
         pickle.dump(storedata, f)
 
 
-def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: list, sp: SignalProcessingParameters, psd, detectors: dict, noiseonly=False):
+def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict, sp: SignalProcessingParameters, psd, detectors: dict, noiseonly=False):
 
     injection_file = f'{outdir}/injections_{fileidx:d}.hdf'
     injector = InjectionSet(injection_file)
     injtable = injector.table
 
-    # SNR array
+    # SNR image array
     snrlist = torch.zeros((2, sp.height_input, sp.width_before_smearing), requires_grad=False)
     # Tukey window
     window = tukey(sp.mfdatalength, sp.tukey_alpha)
     for idx in range(len(injtable)):
+        storedata.append([])
+        storedata[idx].append(idx)
         # Generate strain
         tc = injtable[idx]['tc']
+        mchirp = injtable[idx]['mchirp']
+        i_closest_template = int(np.argmin(abs(np.subtract(template_bank['mchirp'], mchirp))))
         for idx_detector, (k, ifo) in enumerate(detectors.items()):
             strain = pycbc.noise.noise_from_psd(sp.tlen, sp.dt, psd)
             strain.start_time = tc - (sp.duration / 2)
@@ -154,17 +158,16 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: list,
             psd_estimated = pycbc.psd.welch(strain, seg_len=sp.fftlength, seg_stride=sp.overlaplength, avg_method='median-mean')
             psd_interp = pycbc.psd.interpolate(psd_estimated, delta_f=1.0 / sp.duration)
 
-            # Calculate SNR
+            # Calculate SNR with template bank
             for i in range(sp.height_input):
-                rho = matched_filter(template_bank[i], strain * window, psd=psd_interp, low_frequency_cutoff=sp.low_frequency_cutoff)
+                rho = matched_filter(template_bank['template'][i], strain * window, psd=psd_interp, low_frequency_cutoff=sp.low_frequency_cutoff)
                 snrlist[idx_detector, i] = torch.from_numpy(abs(rho).numpy())[sp.kcrop_left: sp.kcrop_right]
-
         # Smearing and storing the data
+        torch.save(snrlist.to(torch.float32), f'{outdir}/inputraw_{fileidx:d}_{idx:d}.pth')
         dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
         torchfilename = f'{outdir}/input_{fileidx:d}_{idx:d}.pth'
         torch.save(dataavg, torchfilename)
-        # print(f'saved. {torchfilename}')
-
+    
 
 def main(args):
     outdir = args.outdir
@@ -211,7 +214,7 @@ def main(args):
     eta = 0.25
     a1 = 0.0
     a2 = 0.0
-    template_bank = []
+    template_bank = {'mchirp': mclist, 'template': []}
     for i in range(ngrid_mc):
         mass1 = mass1_from_mchirp_eta(mclist[i], eta)
         mass2 = mass2_from_mchirp_eta(mclist[i], eta)
@@ -227,7 +230,7 @@ def main(args):
         }
 
         hp_fd, _ = get_fd_waveform(**params_tmp)
-        template_bank.append(hp_fd)
+        template_bank['template'].append(hp_fd)
 
     # Create injection parameters
     gps_start_time = args.starttime

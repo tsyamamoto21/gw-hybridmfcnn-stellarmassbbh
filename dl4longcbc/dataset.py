@@ -111,6 +111,10 @@ def make_pathlist_and_labellist(datadir, labelnames, labels=None):
     datadir is the direcotry.
     labelnames = ['noise', 'cbc'] or ['noise', 'cbc', 'glitch']
     labels = [0, 1] or [0, 1, 2]
+
+    filename pattern is 'input_{idx1}_{idx2}.pth'
+    {idx1} is an index for a set of 1000 data.
+    {idx2} is 0-1000
     '''
 
     # The number of classes
@@ -121,7 +125,7 @@ def make_pathlist_and_labellist(datadir, labelnames, labels=None):
     # List up all pth files in the direcotry
     filelist = []
     labellist = []
-    pattern = re.compile(r"inputs_\d{10}_\d{2}_\d+\.pth")
+    pattern = re.compile(r"input_\d{10}_\d{2}.pth")
     for label, labelname in zip(labels, labelnames):
         target_dir = f'{datadir}/{labelname}/'
         assert os.path.exists(target_dir), f"Directory `{target_dir}` does not exist."
@@ -130,3 +134,15 @@ def make_pathlist_and_labellist(datadir, labelnames, labels=None):
         filelist.extend(all_file_paths)
         labellist.extend([label] * len(all_file_paths))
     return filelist, labellist
+
+
+class SNRThreshold():
+    def __init__(self, dirname):
+        self.dirname = dirname
+
+    def _is_above_snrthreshold(self, idx_subset, idx_data, snrtheshold):
+        
+    
+    
+    
+
