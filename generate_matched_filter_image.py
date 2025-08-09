@@ -140,12 +140,8 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict,
     # Tukey window
     window = tukey(sp.mfdatalength, sp.tukey_alpha)
     for idx in range(len(injtable)):
-        storedata.append([])
-        storedata[idx].append(idx)
         # Generate strain
         tc = injtable[idx]['tc']
-        mchirp = injtable[idx]['mchirp']
-        i_closest_template = int(np.argmin(abs(np.subtract(template_bank['mchirp'], mchirp))))
         for idx_detector, (k, ifo) in enumerate(detectors.items()):
             strain = pycbc.noise.noise_from_psd(sp.tlen, sp.dt, psd)
             strain.start_time = tc - (sp.duration / 2)
@@ -167,7 +163,7 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict,
         dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
         torchfilename = f'{outdir}/input_{fileidx:d}_{idx:d}.pth'
         torch.save(dataavg, torchfilename)
-    
+
 
 def main(args):
     outdir = args.outdir
