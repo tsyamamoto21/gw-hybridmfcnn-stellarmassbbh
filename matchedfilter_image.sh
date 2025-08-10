@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l elapstim_req=01:00:00
+#PBS -l elapstim_req=00:30:00
 #PBS -q gpu
 #PBS -A ML4GW
 #PBS -j o
@@ -20,7 +20,8 @@ pwd
 # 	--injection=$INJECTION_FILE\
 apptainer exec --bind `pwd` dl4longcbc.sif ./generate_matched_filter_image.py\
 	--outdir ./data/dataset_250803/demo\
-	--ndata 100\
+	--ndata 500\
 	--config config/dataset.ini\
 	--starttime 1284083203\
+    --offset 1
 

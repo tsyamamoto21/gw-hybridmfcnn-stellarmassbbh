@@ -20,7 +20,7 @@ import concurrent.futures
 
 
 INJECTION_TIME_STEP = 24
-NINJECTION_PER_FILE = 1000
+NINJECTION_PER_FILE = 500
 
 
 def make_snrmap_coarse(snrmap, kfilter):
@@ -129,7 +129,7 @@ def calculate_snr(injection_file: str, psd, sp: SignalProcessingParameters, dete
         pickle.dump(storedata, f)
 
 
-def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict, sp: SignalProcessingParameters, psd, detectors: dict, noiseonly=False):
+def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict, sp: SignalProcessingParameters, psd, detectors: dict, seed: int, noiseonly=False):
 
     injection_file = f'{outdir}/injections_{fileidx:d}.hdf'
     injector = InjectionSet(injection_file)
@@ -143,7 +143,7 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict,
         # Generate strain
         tc = injtable[idx]['tc']
         for idx_detector, (k, ifo) in enumerate(detectors.items()):
-            strain = pycbc.noise.noise_from_psd(sp.tlen, sp.dt, psd)
+            strain = pycbc.noise.noise_from_psd(sp.tlen, sp.dt, psd, seed=seed)
             strain.start_time = tc - (sp.duration / 2)
             if noiseonly:
                 pass
