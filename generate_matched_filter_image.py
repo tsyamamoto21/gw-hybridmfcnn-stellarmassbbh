@@ -248,8 +248,9 @@ def main(args):
         if not os.path.exists(f'{args.outdir}/{label}/snrlist_{n + args.offset:d}.hdf'):
             snrcalculate_list.append(n + args.offset)
     if len(snrcalculate_list) != 0:
+        randomstate = np.random.RandomState(seed=args.seed)
         with concurrent.futures.ProcessPoolExecutor(max_workers=48) as executor:
-            futures = [executor.submit(calculate_snr, f'{args.outdir}/{label}/injections_{n:d}.hdf', psd_analytic, sp, ifodict) for n in snrcalculate_list]
+            futures = [executor.submit(calculate_snr, f'{args.outdir}/{label}/injections_{n:d}.hdf', psd_analytic, sp, ifodict, randomstate.randint(0, 2**32)) for n in snrcalculate_list]
             results = [f.result() for f in futures]
         print('SNR calculation: ', results)
 
@@ -271,7 +272,7 @@ if __name__ == '__main__':
     parser.add_argument('--outdir', type=str, help='Directory name including `train` or `validate` or `test`.')
     parser.add_argument('--ndata', type=int, help='Data number')
     parser.add_argument('--config', type=str, help='Configure file of injection')
-    parser.add_argument('--seed', type=int, default=128, help='seed')
+    parser.add_argument('--seed', type=int, default=None, help='seed')
     parser.add_argument('--starttime', type=int, help='Injection start GPS time.')
     parser.add_argument('--noiseonly', action='store_true', help='If true, no GW signal are injected.')
     parser.add_argument('--parameteronly', action='store_true', help='If true, no foreground is generated.')
