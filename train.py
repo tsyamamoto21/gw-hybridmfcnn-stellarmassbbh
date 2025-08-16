@@ -15,8 +15,7 @@ from torchvision.transforms import RandomCrop
 from torchmetrics.classification import Accuracy
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
-# from dl4longcbc.dataset import MyDataset, load_dataset
-from dl4longcbc.dataset import make_pathlist_and_labellist, LabelDataset, NormalizeTensor
+import dl4longcbc.dataset as ds
 from dl4longcbc.net import instantiate_neuralnetwork
 from dl4longcbc.utils import if_not_exist_makedir, plot_training_curve
 
@@ -52,15 +51,19 @@ def main(args):
     input_channel = config.net.input_channel
     transforms = nn.Sequential(
         RandomCrop((input_height, input_width)),
-        NormalizeTensor(),
+        ds.NormalizeTensor(),
     )
 
-    inputpaths, labels = make_pathlist_and_labellist(f'{config.dataset.datadir}/train/', ['noise', 'cbc'], [0, 1])
-    dataset_tr = LabelDataset(inputpaths, labels, transform=transforms)
-    dataloader_tr = DataLoader(dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=8)
-    inputpaths, labels = make_pathlist_and_labellist(f'{config.dataset.datadir}/validate/', ['noise', 'cbc'], [0, 1])
-    dataset_val = LabelDataset(inputpaths, labels, transform=transforms)
-    dataloader_val = DataLoader(dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=8)
+    snr_threshold = config.train.snr_threshold
+    num_workers = config.train.num_workers
+    inputpaths, labellists = ds.make_pathlist_and_labellist(f'{config.dataset.datadir}/train/', 100, ['noise', 'cbc'], [0, 1], snr_threshold=snr_threshold)
+    inputpaths, labellists = ds.equalize_data_number_between_labels(inputpaths, labellists)
+    dataset_tr = ds.LabelDataset(inputpaths, labellists, transform=transforms)
+    dataloader_tr = DataLoader(dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=num_workers)
+    inputpaths, labellists = ds.make_pathlist_and_labellist(f'{config.dataset.datadir}/validate/', 10, ['noise', 'cbc'], [0, 1], snr_threshold=snr_threshold)
+    inputpaths, labellists = ds.equalize_data_number_between_labels(inputpaths, labellists)
+    dataset_val = ds.LabelDataset(inputpaths, labellists, transform=transforms)
+    dataloader_val = DataLoader(dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=num_workers)
 
     # Create model
     model = instantiate_neuralnetwork(config)

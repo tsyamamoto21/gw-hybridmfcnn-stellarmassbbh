@@ -1,6 +1,7 @@
 import os
 import re
 import pickle
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
@@ -159,8 +160,8 @@ class SNRThreshold():
         self.mode = mode
 
     def is_above_snrthreshold(self, idx_data):
-        flg_above_threshold_h = self.snrlist[idx_data][2]
-        flg_above_threshold_l = self.snrlist[idx_data][3]
+        flg_above_threshold_h = self.snrlist[idx_data][2] >= self.snr_threshold
+        flg_above_threshold_l = self.snrlist[idx_data][3] >= self.snr_threshold
         if self.mode == 'both':
             flg_above_threshold = flg_above_threshold_h and flg_above_threshold_l
         elif self.mode == 'either':
