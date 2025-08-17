@@ -10,6 +10,7 @@ from omegaconf import OmegaConf
 import dl4longcbc.dataset as ds
 from dl4longcbc.net import instantiate_neuralnetwork
 from dl4longcbc.dataset import TestResult
+from dl4longcbc.utils import if_not_exist_makedir
 
 
 # >>> test loop >>>
@@ -18,6 +19,7 @@ def main(args):
     modeldir = args.modeldir
     datadir = args.datadir
     outdir = args.outdir
+    if_not_exist_makedir(outdir)
     ndata = args.ndata
     config_tr = OmegaConf.load(f'{modeldir}/config_train.yaml')
 
@@ -41,7 +43,7 @@ def main(args):
     # num_workers = config.train.num_workers
     nb = args.batchsize
     # inputpaths, labels = make_pathlist_and_labellist(f'{datadir}/', ['noise'], [0])
-    inputpathlist, labellist = ds.make_pathlist_and_labellist(f'{datadir}/', 10, ['noise'], [0], snr_threshold=None)
+    inputpathlist, labellist = ds.make_pathlist_and_labellist(f'{datadir}/', 10, ['cbc'], [1], snr_threshold=None)
     dataset = ds.LabelDataset(inputpathlist, labellist, transform=transforms)
     dataloader = DataLoader(dataset, batch_size=nb, shuffle=False, drop_last=False, num_workers=8)
     ndata = len(inputpathlist)
