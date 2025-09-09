@@ -14,6 +14,7 @@ from pycbc.conversions import mass1_from_mchirp_eta, mass2_from_mchirp_eta
 from pycbc.filter import highpass, matched_filter, sigmasq
 from pycbc.psd.analytical import aLIGOZeroDetHighPower
 from pycbc.detector import Detector
+from pycbc.types import TimeSeries
 import pycbc.noise
 from dl4longcbc.utils import if_not_exist_makedir
 import concurrent.futures
@@ -129,21 +130,24 @@ def calculate_snr(injection_file: str, psd, sp: SignalProcessingParameters, dete
         pickle.dump(storedata, f)
 
 
-def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict, sp: SignalProcessingParameters, psd, detectors: dict, noiseonly=False):
+def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict, sp: SignalProcessingParameters, psd, detectors: dict, noiseonly=False, nonoise=False):
 
     injection_file = f'{outdir}/injections_{fileidx:d}.hdf'
     injector = InjectionSet(injection_file)
     injtable = injector.table
 
     # SNR image array
-    snrlist = torch.zeros((2, sp.height_input, sp.width_before_smearing), requires_grad=False)
+    snrlist = torch.zeros((2, sp.height_input, sp.width_before_smearing), requires_grad=False, dtype=torch.complex128)
     # Tukey window
     window = tukey(sp.mfdatalength, sp.tukey_alpha)
     for idx in range(len(injtable)):
         # Generate strain
         tc = injtable[idx]['tc']
         for idx_detector, (k, ifo) in enumerate(detectors.items()):
-            strain = pycbc.noise.noise_from_psd(sp.tlen, sp.dt, psd)
+            if nonoise:
+                strain = TimeSeries(np.zeros((sp.tlen,)), delta_t=sp.dt)
+            else:
+                strain = pycbc.noise.noise_from_psd(sp.tlen, sp.dt, psd)
             strain.start_time = tc - (sp.duration / 2)
             if noiseonly:
                 pass
@@ -151,18 +155,28 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict,
                 injector.apply(strain, k)
             strain = highpass(strain, 15.0)
             # Estimate PSD
-            psd_estimated = pycbc.psd.welch(strain, seg_len=sp.fftlength, seg_stride=sp.overlaplength, avg_method='median-mean')
-            psd_interp = pycbc.psd.interpolate(psd_estimated, delta_f=1.0 / sp.duration)
+            if nonoise:
+                psd_interp = pycbc.psd.interpolate(psd, delta_f=1.0 / sp.duration)
+            else:
+                psd_estimated = pycbc.psd.welch(strain, seg_len=sp.fftlength, seg_stride=sp.overlaplength, avg_method='median-mean')
+                psd_interp = pycbc.psd.interpolate(psd_estimated, delta_f=1.0 / sp.duration)
 
             # Calculate SNR with template bank
             for i in range(sp.height_input):
                 rho = matched_filter(template_bank['template'][i], strain * window, psd=psd_interp, low_frequency_cutoff=sp.low_frequency_cutoff)
-                snrlist[idx_detector, i] = torch.from_numpy(abs(rho).numpy())[sp.kcrop_left: sp.kcrop_right]
+                # snrlist[idx_detector, i] = torch.from_numpy(abs(rho).numpy())[sp.kcrop_left: sp.kcrop_right]
+                snrlist[idx_detector, i] = torch.from_numpy(rho.numpy())[sp.kcrop_left: sp.kcrop_right]
+
+            # If necessary, strain is saved
+            strainfilename = f'{outdir}/strain_{fileidx:d}_{idx:d}_{k}.pkl'
+            with open(strainfilename, 'wb') as fo:
+                pickle.dump(strain, fo)
+
         # Smearing and storing the data
-        # torch.save(snrlist.to(torch.float32), f'{outdir}/inputraw_{fileidx:d}_{idx:d}.pth')
-        dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
         torchfilename = f'{outdir}/input_{fileidx:d}_{idx:d}.pth'
-        torch.save(dataavg, torchfilename)
+        # dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
+        # torch.save(dataavg, torchfilename)
+        torch.save(snrlist, torchfilename)
 
 
 def main(args):
@@ -260,7 +274,7 @@ def main(args):
         # def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: list, sp: SignalProcessingParameters, psd, detectors: dict, noiseonly=False):
         # Run the main code
         with concurrent.futures.ProcessPoolExecutor(max_workers=48) as executor:
-            futures = [executor.submit(generate_matchedfilter_image, f'{outdir}/{label}/', n, template_bank, sp, psd_analytic, ifodict, args.noiseonly) for n in range(args.offset, args.offset + ninjfile)]
+            futures = [executor.submit(generate_matchedfilter_image, f'{outdir}/{label}/', n, template_bank, sp, psd_analytic, ifodict, args.noiseonly, args.nonoise) for n in range(args.offset, args.offset + ninjfile)]
             results = [f.result() for f in futures]
         print('Generate matched filter images: ', results)
 
@@ -274,8 +288,14 @@ if __name__ == '__main__':
     # parser.add_argument('--seed', type=int, default=None, help='seed')
     parser.add_argument('--starttime', type=int, help='Injection start GPS time.')
     parser.add_argument('--noiseonly', action='store_true', help='If true, no GW signal are injected.')
+    parser.add_argument('--nonoise', action='store_true', help='If true, no noise are injected.')
     parser.add_argument('--parameteronly', action='store_true', help='If true, no foreground is generated.')
     parser.add_argument('--force', action='store_true')
     parser.add_argument('--offset', type=int, default=0)
     args = parser.parse_args()
+
+    # Check arguments consistency
+    if args.noiseonly * args.nonoise:
+        raise ValueError("noiseonly and nonoise cannot be true at the same time.")
+
     main(args)

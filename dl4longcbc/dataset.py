@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
+from pycbc.detector import Detector
 
 
 class TestResult(torch.nn.Module):
@@ -60,6 +61,60 @@ class NormalizeTensor(nn.Module):
         xmin = torch.min(x)
         xmax = torch.max(x)
         return (x - xmin) / (xmax - xmin)
+
+
+class LoadZeroNoiseMatchedFilter(nn.Module):
+    def __init__(self, shape):
+        super().__init__()
+        self.shape = shape
+
+    def forward(self, filepath):
+        if filepath is None:
+            x = torch.zeros(size=self.shape, dtype=torch.float32)
+        else:
+            x = torch.load(filepath, weights_only=False, dtype=torch.float32)
+        return x
+
+
+class ProjectionAndTimeShift(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.ifo1 = Detector('H1')
+        self.ifo2 = Detector('L1')
+        self.fs = 4096  # 4096Hz (default)
+        self.w_org = 5376  # = (1.25s + 1/16s) * 4096Hz
+        self.w_tar = 4096  # 4096 = 1s * 4096Hz
+        self.kbuffer_for_dt = 128  # = (1/32)s * 4096Hz
+        self.kbuffer_for_timeshift = 2048  # = 0.5s * 4096Hz
+        self.kstart_min = self.k_buffer_for_dt
+        self.kstart_max = self.k_buffer_for_dt + self.k_buffer_for_timeshift
+
+    def forward(self, x):
+        # x: torch.Tensor (2, H, W)
+        _, height, width = x.size()
+        # Random sampling the extrinsic parameters
+        gpstime = np.random.randint(1200000000, 1400000000)
+        ra = np.random.uniform(0.0, 2.0 * np.pi)
+        dec = np.arcsin(np.random.uniform(-1, 1))
+        pol = np.random.uniform(0.0, np.pi)
+        cosi = np.random.uniform(-1.0, 1.0)
+        # Get polarization and antenna pattern functions
+        Ap = (1.0 + cosi**2) / 2.0
+        Ac = cosi
+        Fp1, Fc1 = self.ifo1.antenna_pattern(ra, dec, pol, gpstime)
+        Fp2, Fc2 = self.ifo2.antenna_pattern(ra, dec, pol, gpstime)
+        # Time Shift
+        dt = self.ifo2.time_delay_from_detector(self.ifo1, ra, dec, gpstime)
+        kshift = int(dt * self.fs)
+        kstart1 = np.random.randint(self.kstart_min, self.kstart_max)
+        kend1 = kstart1 + self.w_tar
+        kstart2 = kstart1 + kshift
+        kend2 = kstart2 + self.w_tar
+        # Crop the data
+        xout = torch.zeros((2, height, self.w_tar))
+        xout[0] = Fp1 * Ap * x[0, :, kstart1: kend1] + Fc1 * Ac * x[1, :, kstart1: kend1]
+        xout[1] = Fp2 * Ap * x[0, :, kstart2: kend2] + Fc2 * Ac * x[1, :, kstart2: kend2]
+        return xout
 
 
 def normalize_tensor(x):
