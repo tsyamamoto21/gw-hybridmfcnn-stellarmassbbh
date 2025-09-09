@@ -43,26 +43,19 @@ def main(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Make dataloader
-    # img_height = config.dataset.img_height
-    # img_width = config.dataset.img_width
-    # img_channel = config.dataset.img_channel
     input_height = config.net.input_height
     input_width = config.net.input_width
     input_channel = config.net.input_channel
-    # transforms = nn.Sequential(
-    #     RandomCrop((input_height, input_width)),
-    #     ds.NormalizeTensor(),
-    # )
 
     snr_threshold = config.train.snr_threshold
     num_workers = config.train.num_workers
     inputpaths, labellists = ds.make_pathlist_and_labellist(f'{config.dataset.datadir}/train/', 100, ['noise', 'cbc'], [0, 1], snr_threshold=snr_threshold)
-    inputpaths, labellists = ds.equalize_data_number_between_labels(inputpaths, labellists)
-    dataset_tr = ds.LabelDataset(inputpaths, labellists, transform=transforms)
+    noisepaths = ds.get_noise_filepaths(f'{config.dataset.datadir}/train/', nfile=10)
+    dataset_tr = ds.LabelDataset(inputpaths, labellists, noisepaths)
     dataloader_tr = DataLoader(dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=num_workers)
     inputpaths, labellists = ds.make_pathlist_and_labellist(f'{config.dataset.datadir}/validate/', 10, ['noise', 'cbc'], [0, 1], snr_threshold=snr_threshold)
-    inputpaths, labellists = ds.equalize_data_number_between_labels(inputpaths, labellists)
-    dataset_val = ds.LabelDataset(inputpaths, labellists, transform=transforms)
+    noisepaths = ds.get_noise_filepaths(f'{config.dataset.datadir}/validate/', nfile=10)
+    dataset_val = ds.LabelDataset(inputpaths, labellists, noisepaths)
     dataloader_val = DataLoader(dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=num_workers)
 
     # Create model

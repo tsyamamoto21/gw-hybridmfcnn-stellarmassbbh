@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
@@ -7,8 +8,8 @@ from pycbc.detector import Detector
 
 
 class LabelDataset(torch.utils.data.Dataset):
-    def __init__(self, signal_mf_filepaths, labels, noise_mf_filepaths, transform=None):
-        self.transform = transform
+    def __init__(self, signal_mf_filepaths, labels, noise_mf_filepaths):
+        # self.transform = transform
         self.fp_signal = signal_mf_filepaths
         self.fp_noise = noise_mf_filepaths
         self.data_num = len(signal_mf_filepaths)
@@ -29,7 +30,7 @@ class LabelDataset(torch.utils.data.Dataset):
         idx_noise = np.random.randint(0, self.noise_num, (2,))
         zn = self.load_noise_sample([self.fp_noise[idx_noise[0]], self.fp_noise[idx_noise[1]]])
         out_data = self.inject(zn, zinj)
-        out_label = torch.tensor(self.label[idx], dtype=torch.long)
+        out_label = torch.tensor(self.labels[idx], dtype=torch.long)
         return out_data, out_label
 
 
@@ -201,28 +202,46 @@ def make_pathlist_and_labellist(datadir, n_subset, labeldict: dict = {'noise': 0
     return filelist, labellist
 
 
-def equalize_data_number_between_labels(pathlist, labellist):
-    label_unique = list(set(labellist))  # Extract unique label set
-    pathsubset_list = []
-    labelsubset_list = []
-    ndatalist = []
-    # Divide list by labels
-    for label in label_unique:
-        pathsubset = [pathlist[i] for i in range(len(pathlist)) if labellist[i] == label]
-        pathsubset_list.append(pathsubset)
-        labelsubset_list.append([label] * len(pathsubset))
-        ndatalist.append(len(pathsubset))
+# def equalize_data_number_between_labels(pathlist, labellist):
+#     label_unique = list(set(labellist))  # Extract unique label set
+#     pathsubset_list = []
+#     labelsubset_list = []
+#     ndatalist = []
+#     # Divide list by labels
+#     for label in label_unique:
+#         pathsubset = [pathlist[i] for i in range(len(pathlist)) if labellist[i] == label]
+#         pathsubset_list.append(pathsubset)
+#         labelsubset_list.append([label] * len(pathsubset))
+#         ndatalist.append(len(pathsubset))
 
-    # Smallest label
-    label_target = np.argmin(ndatalist)
-    ndata_target = ndatalist[label_target]
+#     # Smallest label
+#     label_target = np.argmin(ndatalist)
+#     ndata_target = ndatalist[label_target]
 
-    # Cut the dataset
-    for label in label_unique:
-        if label != label_target:
-            pathsubset_list[label] = pathsubset_list[label][:ndata_target]
-            labelsubset_list[label] = labelsubset_list[label][:ndata_target]
+#     # Cut the dataset
+#     for label in label_unique:
+#         if label != label_target:
+#             pathsubset_list[label] = pathsubset_list[label][:ndata_target]
+#             labelsubset_list[label] = labelsubset_list[label][:ndata_target]
 
-    pathsubset_list = sum(pathsubset_list, [])  # flatten
-    labelsubset_list = sum(labelsubset_list, [])  # flatten
-    return pathsubset_list, labelsubset_list
+#     pathsubset_list = sum(pathsubset_list, [])  # flatten
+#     labelsubset_list = sum(labelsubset_list, [])  # flatten
+#     return pathsubset_list, labelsubset_list
+
+
+def get_noise_filepaths(datadir, nfile):
+    filelist = []
+    for idx in range(nfile):
+        filename = os.path.join(datadir, f'noise/noise_mfimage_{idx}.pth')
+        assert sys.path.exists(filename), f"File {filename} does not exist."
+        filelist.append(filename)
+    return filelist
+
+
+def make_snrmap_coarse(snrmap, kfilter):
+    nc, nx, ny = snrmap.shape
+    ny_coarse = ny // kfilter
+    snrmap_coarse = torch.zeros((nc, nx, ny_coarse), dtype=torch.float32)
+    for i in range(ny_coarse):
+        snrmap_coarse[:, :, i] = torch.sqrt(torch.mean(snrmap[:, :, i * kfilter: (i + 1) * kfilter]**2, dim=-1))
+    return snrmap_coarse
