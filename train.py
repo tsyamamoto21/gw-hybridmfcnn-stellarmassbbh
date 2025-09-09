@@ -15,7 +15,7 @@ from torchvision.transforms import RandomCrop
 from torchmetrics.classification import Accuracy
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
-import dl4longcbc.dataset as ds
+import dl4longcbc.dataset_train as ds
 from dl4longcbc.net import instantiate_neuralnetwork
 from dl4longcbc.utils import if_not_exist_makedir, plot_training_curve
 
@@ -49,10 +49,10 @@ def main(args):
     input_height = config.net.input_height
     input_width = config.net.input_width
     input_channel = config.net.input_channel
-    transforms = nn.Sequential(
-        RandomCrop((input_height, input_width)),
-        ds.NormalizeTensor(),
-    )
+    # transforms = nn.Sequential(
+    #     RandomCrop((input_height, input_width)),
+    #     ds.NormalizeTensor(),
+    # )
 
     snr_threshold = config.train.snr_threshold
     num_workers = config.train.num_workers

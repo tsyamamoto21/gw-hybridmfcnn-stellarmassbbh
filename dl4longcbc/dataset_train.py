@@ -1,53 +1,34 @@
 import os
 import re
-import pickle
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
 from pycbc.detector import Detector
 
 
-class TestResult(torch.nn.Module):
-    def __init__(self, result_dict):
-        super(TestResult, self).__init__()
-        self.label = nn.Parameter(result_dict["label"], requires_grad=False)
-        self.output = nn.Parameter(result_dict["output"], requires_grad=False)
-
-
-class MyDataset(Dataset):
-    def __init__(self, data, target, transform=None):
-        self.data = data
-        self.target = target
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, index):
-        x = self.data[index]
-        if self.transform:
-            x = self.transform(x)
-        y = self.target[index]
-        return x, y
-
-
 class LabelDataset(torch.utils.data.Dataset):
-    '''
-    data: List of paths
-    label: List of labels
-    '''
-    def __init__(self, data, label, transform=None):
+    def __init__(self, signal_mf_filepaths, labels, noise_mf_filepaths, transform=None):
         self.transform = transform
-        self.data = data
-        self.data_num = len(data)
-        self.label = label
+        self.fp_signal = signal_mf_filepaths
+        self.fp_noise = noise_mf_filepaths
+        self.data_num = len(signal_mf_filepaths)
+        self.noise_num = len(self.fp_noise)
+        self.labels = labels
+        # Transforms
+        self.load_zero_noise_mf = LoadZeroNoiseMatchedFilter((2, 256, 4096))
+        self.proection_timeshift = ProjectionAndTimeShift()
+        self.load_noise_sample = GetNoiseSample()
+        self.inject = InjectSignalIntoNoise_in_MFSense()
 
     def __len__(self):
         return self.data_num
 
     def __getitem__(self, idx):
-        out_data = self.transform(torch.load(self.data[idx], weights_only=True))
+        zinj = self.load_zero_noise_mf(self.fp_signal[idx])
+        zinj = self.proection_timeshift(zinj)
+        idx_noise = np.random.randint(0, self.noise_num, (2,))
+        zn = self.load_noise_sample([self.fp_noise[idx_noise[0]], self.fp_noise[idx_noise[1]]])
+        out_data = self.inject(zn, zinj)
         out_label = torch.tensor(self.label[idx], dtype=torch.long)
         return out_data, out_label
 
@@ -89,7 +70,7 @@ class ProjectionAndTimeShift(nn.Module):
         self.kstart_min = self.kbuffer_for_dt
         self.kstart_max = self.kbuffer_for_dt + self.kbuffer_for_timeshift
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         # x: torch.Tensor (2, H, W)
         _, height, width = x.size()
         # Random sampling the extrinsic parameters
@@ -115,6 +96,35 @@ class ProjectionAndTimeShift(nn.Module):
         xout[0] = Fp1 * Ap * x[0, :, kstart1: kend1] + Fc1 * Ac * x[1, :, kstart1: kend1]
         xout[1] = Fp2 * Ap * x[0, :, kstart2: kend2] + Fc2 * Ac * x[1, :, kstart2: kend2]
         return xout
+
+
+class GetNoiseSample(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.w_org = 4 * 4096
+        self.w_tar = 4096
+        self.kstart_min = 0
+        self.kstart_max = self.w_org - self.w_tar
+
+    def forward(self, filepaths: list):
+        channel = len(filepaths)
+        xout = torch.zeros((channel, 256, 4096), dtype=torch.complex128)
+        for c in range(channel):
+            kstart = np.random.randint(self.kstart_min, self.kstart_max)
+            xout[c] = torch.load(filepaths[c], weights_only=False)[kstart: kstart + self.w_tar]
+        return xout
+
+
+class InjectSignalIntoNoise_in_MFSense(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, zn: torch.Tensor, zinj: torch.Tensor):
+        assert zn.size() == zinj.size(), "zn and zinj do not have the same size."
+        zn2 = (zn * zn._conj()).real
+        zinj2 = (zinj * zinj._conj()).real
+        zcross = 2.0 * (zn * zinj._conj()).real
+        return torch.sqrt(zn2 + zinj2 + zcross)
 
 
 def normalize_tensor(x):
@@ -162,66 +172,33 @@ def load_dataset(datadir, labelnamelist, imgsize, labellist=None):
     return normalize_tensor(input_tensors), label_tensors
 
 
-def make_pathlist_and_labellist(datadir, n_subset, labelnames, labels=None, snr_threshold=None):
+def make_pathlist_and_labellist(datadir, n_subset, labeldict: dict = {'noise': 0, 'cbc': 1}):
     '''
     e.g.
     datadir is the direcotry.
-    labelnames = ['noise', 'cbc'] or ['noise', 'cbc', 'glitch']
-    labels = [0, 1] or [0, 1, 2]
+    labeldict = {'noise': 0, 'cbc': 1} for example
 
-    filename pattern is 'input_{idx1}_{idx2}.pth'
+    filename pattern is 'signal_mfimage_{idx1}_{idx2}.pth'
     {idx1} is an index for a set of 1000 data.
     {idx2} is 0-999
     '''
-
     n_per_subset = 1000
-    # The number of classes
-    nclass = len(labelnames)
-    if labels is None:
-        labels = [i for i in range(nclass)]
 
     # List up all pth files in the direcotry
     filelist = []
     labellist = []
-    for label, labelname in zip(labels, labelnames):
+    # assert os.path.exists(target_dir), f"Directory `{target_dir}` does not exist."
+
+    for k, v in labeldict.items():
         for idx_subset in range(n_subset):
-            target_dir = f'{datadir}/{labelname}/'
-            assert os.path.exists(target_dir), f"Directory `{target_dir}` does not exist."
-            if snr_threshold is not None:
-                snrth = SNRThreshold(target_dir, idx_subset, snr_threshold)
-
             for idx in range(n_per_subset):
-                flg = True
-                if snr_threshold is not None:
-                    flg = snrth.is_above_snrthreshold(idx)
-                filename = f'{target_dir}/input_{idx_subset}_{idx}.pth'
-                if os.path.exists(filename) and flg:
-                    filelist.append(filename)
-                    labellist.append(label)
+                if k == 'noise':
+                    filename = None
+                else:
+                    filename = os.path.join(datadir, f'cbc/signal_mfimage_{idx_subset}_{idx}.pth')
+                filelist.append(filename)
+                labellist.append(v)
     return filelist, labellist
-
-
-class SNRThreshold():
-    def __init__(self, dirname, idx_subset, snr_threshold, mode='either'):
-        '''
-        dirname should include up to label
-        '''
-        assert (mode == 'both') or (mode == 'either'), 'Choose both or either'
-        self.dirname = dirname
-        self.pklfile = f'{dirname}/snrlist_{idx_subset:d}.pkl'
-        with open(self.pklfile, 'rb') as fo:
-            self.snrlist = pickle.load(fo)
-        self.snr_threshold = snr_threshold
-        self.mode = mode
-
-    def is_above_snrthreshold(self, idx_data):
-        flg_above_threshold_h = self.snrlist[idx_data][2] >= self.snr_threshold
-        flg_above_threshold_l = self.snrlist[idx_data][3] >= self.snr_threshold
-        if self.mode == 'both':
-            flg_above_threshold = flg_above_threshold_h and flg_above_threshold_l
-        elif self.mode == 'either':
-            flg_above_threshold = flg_above_threshold_h or flg_above_threshold_l
-        return flg_above_threshold
 
 
 def equalize_data_number_between_labels(pathlist, labellist):
@@ -230,10 +207,10 @@ def equalize_data_number_between_labels(pathlist, labellist):
     labelsubset_list = []
     ndatalist = []
     # Divide list by labels
-    for l in label_unique:
-        pathsubset = [pathlist[i] for i in range(len(pathlist)) if labellist[i] == l]
+    for label in label_unique:
+        pathsubset = [pathlist[i] for i in range(len(pathlist)) if labellist[i] == label]
         pathsubset_list.append(pathsubset)
-        labelsubset_list.append([l] * len(pathsubset))
+        labelsubset_list.append([label] * len(pathsubset))
         ndatalist.append(len(pathsubset))
 
     # Smallest label
@@ -241,10 +218,10 @@ def equalize_data_number_between_labels(pathlist, labellist):
     ndata_target = ndatalist[label_target]
 
     # Cut the dataset
-    for l in label_unique:
-        if l != label_target:
-            pathsubset_list[l] = pathsubset_list[l][:ndata_target]
-            labelsubset_list[l] = labelsubset_list[l][:ndata_target]
+    for label in label_unique:
+        if label != label_target:
+            pathsubset_list[label] = pathsubset_list[label][:ndata_target]
+            labelsubset_list[label] = labelsubset_list[label][:ndata_target]
 
     pathsubset_list = sum(pathsubset_list, [])  # flatten
     labelsubset_list = sum(labelsubset_list, [])  # flatten

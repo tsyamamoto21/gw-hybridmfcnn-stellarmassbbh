@@ -7,9 +7,9 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import RandomCrop
 from omegaconf import OmegaConf
 # from dl4longcbc.dataset import make_pathlist_and_labellist, LabelDataset
-import dl4longcbc.dataset as ds
+import dl4longcbc.dataset_test as ds
 from dl4longcbc.net import instantiate_neuralnetwork
-from dl4longcbc.dataset import TestResult
+# from dl4longcbc.dataset import TestResult
 from dl4longcbc.utils import if_not_exist_makedir
 
 
@@ -68,7 +68,7 @@ def main(args):
         "label": labeltensor,
         "output": outputtensor
     }
-    result_model = TestResult(result_dict)
+    result_model = ds.TestResult(result_dict)
     torch.save(result_model, f"{outdir}/result.pth")
     print("Test: Result saved.")
 
