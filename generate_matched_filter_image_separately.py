@@ -205,7 +205,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate matched filter images.')
     parser.add_argument('--outdir', type=str, help='Directory name including `train` or `validate` or `test`.')
     parser.add_argument('--ndata', type=int, help='Data number')
-    parser.add_argument('--starttime', type=int, help='Injection start GPS time.')
     parser.add_argument('--noise', action='store_true', help='Noise mf image')
     parser.add_argument('--signal', action='store_true', help='Signal mf image')
     parser.add_argument('--offset', type=int, default=0)
