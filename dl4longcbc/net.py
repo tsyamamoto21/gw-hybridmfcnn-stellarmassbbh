@@ -19,7 +19,8 @@ class get_activation_layer(nn.Module):
 
 def instantiate_neuralnetwork(config: DictConfig):
     modeldict = {
-        'cnn': MFImageCNN
+        'cnn': MFImageCNN,
+        'cnn_archiv1': MFImageCNN_archiv01
     }
     if config.net.modelname in ['cnn']:
         return modeldict[config.net.modelname](config)
@@ -35,6 +36,60 @@ class MFImageCNN(nn.Module):
     # CNN model for spectrogram input
     def __init__(self, config: DictConfig):
         super(MFImageCNN, self).__init__()
+        layers = []
+        in_channels = config.net.input_channel
+        in_height = config.net.input_height
+        in_width = config.net.input_width
+        for i in range(config.net.num_conv_layers):
+            # Convolutional layers
+            out_channels = config.net[f"conv_{i+1}_out_channels"]
+            kernel_size = config.net[f"conv_{i+1}_kernel_size"]
+            stride = config.net[f"conv_{i+1}_stride"]
+            padding = config.net[f"conv_{i+1}_padding"]
+            dilation = 1
+            layers.append(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation))
+            in_height, in_width = self._get_output_size(in_height, in_width, kernel_size, stride, padding, dilation)
+            layers.append(get_activation_layer(config.net.activation))
+            # Pooling layers
+            kernel_size = config.net[f"pool_{i+1}_kernel_size"]
+            stride = config.net[f"pool_{i+1}_stride"]
+            padding = config.net[f"pool_{i+1}_padding"]
+            dilation = config.net[f"pool_{i+1}_dilation"]
+            layers.append(nn.MaxPool2d(kernel_size, stride, padding, dilation))
+            in_height, in_width = self._get_output_size(in_height, in_width, kernel_size, stride, padding, dilation)
+            in_channels = out_channels
+        layers.append(nn.Flatten())
+        # Linear layers
+        in_features = in_channels * in_height * in_width
+        for i in range(config.net.num_linear_layers):
+            out_features = config.net[f"linear_{i+1}_size"]
+            layers.append(nn.Linear(in_features, out_features))
+            layers.append(get_activation_layer(config.net.activation))
+            in_features = out_features
+        layers.append(nn.Linear(in_features, config.net.out_features))
+        # Sequential
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.net(x)
+        return x
+
+    def _get_output_size(self, Hin: int, Win: int, kernel_size, stride, padding, dilation):
+        if not isinstance(kernel_size, int):
+            kh = kernel_size[0]
+            kw = kernel_size[1]
+        else:
+            kh = kernel_size
+            kw = kernel_size
+        Hout = math.floor((Hin + 2 * padding - dilation * (kh - 1) - 1) / stride + 1)
+        Wout = math.floor((Win + 2 * padding - dilation * (kw - 1) - 1) / stride + 1)
+        return (Hout, Wout)
+
+
+class MFImageCNN_archiv01(nn.Module):
+    # CNN model for spectrogram input
+    def __init__(self, config: DictConfig):
+        super(MFImageCNN_archiv01, self).__init__()
         layers = []
         in_channels = config.net.input_channel
         in_height = config.net.input_height
