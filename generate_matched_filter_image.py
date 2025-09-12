@@ -126,13 +126,14 @@ def calculate_snr(injection_file: str, psd, sp: SignalProcessingParameters, dete
             for ifo in ['H1', 'L1']:
                 storedata[idx].append(rhodict[ifo][idx])
             storedata[idx].append(rhodict['total'][idx])
-    with open(f'{dirname}/snrlist_{idx_file}.pkl', 'wb') as f:
+    snrlistfile = os.path.join(dirname, f'snrlist_{idx_file}.pkl')
+    with open(snrlistfile, 'wb') as f:
         pickle.dump(storedata, f)
 
 
 def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict, sp: SignalProcessingParameters, psd, detectors: dict, noiseonly=False, nonoise=False):
 
-    injection_file = f'{outdir}/injections_{fileidx:d}.hdf'
+    injection_file = os.path.join(outdir, f'injections_{fileidx:d}.hdf')
     injector = InjectionSet(injection_file)
     injtable = injector.table
 
@@ -168,19 +169,19 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict,
                 snrlist[idx_detector, i] = torch.from_numpy(rho.numpy())[sp.kcrop_left: sp.kcrop_right]
 
             # If necessary, strain is saved
-            strainfilename = f'{outdir}/strain_{fileidx:d}_{idx:d}_{k}.pkl'
+            strainfilename = os.path.join(outdir, f'strain_{fileidx:d}_{idx:d}_{k}.pkl')
             with open(strainfilename, 'wb') as fo:
                 pickle.dump(strain, fo)
 
         # Smearing and storing the data
-        torchfilename = f'{outdir}/input_{fileidx:d}_{idx:d}.pth'
+        torchfilename = os.path.join(outdir, f'input_{fileidx:d}_{idx:d}.pth')
         dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
         torch.save(dataavg, torchfilename)
 
 
 def main(args):
-    outdir = args.outdir
-    if_not_exist_makedir(outdir)
+    outdir_root = args.outdir
+    if_not_exist_makedir(outdir_root)
     ndata = args.ndata
     ninjfile = int(math.ceil(ndata / NINJECTION_PER_FILE))
     print(f'{ninjfile=}')
@@ -188,7 +189,8 @@ def main(args):
         label = 'noise'
     else:
         label = 'cbc'
-    if_not_exist_makedir(f'{outdir}/{label}')
+    outdir = os.path.join(outdir_root, label)
+    if_not_exist_makedir(outdir)
 
     # Strain parameters
     ifonamelist = ['H1', 'L1']
@@ -244,7 +246,8 @@ def main(args):
     # Create injection parameters
     gps_start_time = args.starttime
     for n in range(ninjfile):
-        injection_file = f'{args.outdir}/{label}/injections_{n + args.offset:d}.hdf'
+        # injection_file = f'{args.outdir}/{label}/injections_{n + args.offset:d}.hdf'
+        injection_file = os.path.join(outdir, f'injections_{n + args.offset:d}.hdf')
         if n == ninjfile - 1:
             if ndata % NINJECTION_PER_FILE == 0:
                 nsample = NINJECTION_PER_FILE
@@ -258,11 +261,13 @@ def main(args):
     # Calculate SNR
     snrcalculate_list = []
     for n in range(ninjfile):
-        if not os.path.exists(f'{args.outdir}/{label}/snrlist_{n + args.offset:d}.hdf'):
+        injection_file = os.path.join(outdir, f'injections_{n + args.offset:d}.hdf')
+        snrlistfile = os.path.join(outdir, f'snrlist_{n + args.offset:d}.hdf')
+        if not os.path.exists(snrlistfile):
             snrcalculate_list.append(n + args.offset)
     if len(snrcalculate_list) != 0:
         with concurrent.futures.ProcessPoolExecutor(max_workers=48) as executor:
-            futures = [executor.submit(calculate_snr, f'{args.outdir}/{label}/injections_{n:d}.hdf', psd_analytic, sp, ifodict) for n in snrcalculate_list]
+            futures = [executor.submit(calculate_snr, injection_file, psd_analytic, sp, ifodict) for n in snrcalculate_list]
             results = [f.result() for f in futures]
         print('SNR calculation: ', results)
 
@@ -273,7 +278,7 @@ def main(args):
         # def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: list, sp: SignalProcessingParameters, psd, detectors: dict, noiseonly=False):
         # Run the main code
         with concurrent.futures.ProcessPoolExecutor(max_workers=48) as executor:
-            futures = [executor.submit(generate_matchedfilter_image, f'{outdir}/{label}/', n, template_bank, sp, psd_analytic, ifodict, args.noiseonly, args.nonoise) for n in range(args.offset, args.offset + ninjfile)]
+            futures = [executor.submit(generate_matchedfilter_image, outdir, n, template_bank, sp, psd_analytic, ifodict, args.noiseonly, args.nonoise) for n in range(args.offset, args.offset + ninjfile)]
             results = [f.result() for f in futures]
         print('Generate matched filter images: ', results)
 
