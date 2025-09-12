@@ -22,7 +22,7 @@ pwd
 # 	--injection=$INJECTION_FILE\
 apptainer exec --bind `pwd` dl4longcbc.sif ./generate_matched_filter_image.py\
 	--outdir ./data/dataset_250803/test/\
-	--ndata 1000\
+	--ndata 10\
 	--config config/dataset.ini\
 	--starttime $(($GPSSTART + 24 * 1000 * $PBS_SUBREQNO))\
     --offset $PBS_SUBREQNO

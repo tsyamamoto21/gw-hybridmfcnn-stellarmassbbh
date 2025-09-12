@@ -24,13 +24,13 @@ INJECTION_TIME_STEP = 24
 NINJECTION_PER_FILE = 1000
 
 
-def make_snrmap_coarse(snrmap, kfilter):
-    nc, nx, ny = snrmap.shape
-    ny_coarse = ny // kfilter
-    snrmap_coarse = torch.zeros((nc, nx, ny_coarse), dtype=torch.float32)
-    for i in range(ny_coarse):
-        snrmap_coarse[:, :, i] = torch.sqrt(torch.mean(snrmap[:, :, i * kfilter: (i + 1) * kfilter]**2, dim=-1))
-    return snrmap_coarse
+# def make_snrmap_coarse(snrmap, kfilter):
+#     nc, nx, ny = snrmap.shape
+#     ny_coarse = ny // kfilter
+#     snrmap_coarse = torch.zeros((nc, nx, ny_coarse), dtype=torch.float32)
+#     for i in range(ny_coarse):
+#         snrmap_coarse[:, :, i] = torch.sqrt(torch.mean(snrmap[:, :, i * kfilter: (i + 1) * kfilter]**2, dim=-1))
+#     return snrmap_coarse
 
 
 class SignalProcessingParameters:
@@ -138,7 +138,7 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict,
     injtable = injector.table
 
     # SNR image array
-    snrlist = torch.zeros((2, sp.height_input, sp.width_before_smearing), requires_grad=False, dtype=torch.complex128)
+    snrlist = torch.zeros((2, sp.height_input, sp.width_before_smearing), requires_grad=False, dtype=torch.float32)
     # Tukey window
     window = tukey(sp.mfdatalength, sp.tukey_alpha)
     for idx in range(len(injtable)):
@@ -165,8 +165,7 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict,
             # Calculate SNR with template bank
             for i in range(sp.height_input):
                 rho = matched_filter(template_bank['template'][i], strain * window, psd=psd_interp, low_frequency_cutoff=sp.low_frequency_cutoff)
-                # snrlist[idx_detector, i] = torch.from_numpy(abs(rho).numpy())[sp.kcrop_left: sp.kcrop_right]
-                snrlist[idx_detector, i] = torch.from_numpy(rho.numpy())[sp.kcrop_left: sp.kcrop_right]
+                snrlist[idx_detector, i] = torch.from_numpy(abs(rho).numpy())[sp.kcrop_left: sp.kcrop_right].to(torch.float32)
 
             # If necessary, strain is saved
             strainfilename = os.path.join(outdir, f'strain_{fileidx:d}_{idx:d}_{k}.pkl')
@@ -175,8 +174,9 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict,
 
         # Smearing and storing the data
         torchfilename = os.path.join(outdir, f'input_{fileidx:d}_{idx:d}.pth')
-        dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
-        torch.save(dataavg, torchfilename)
+        torch.save(snrlist, torchfilename)
+        # dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
+        # torch.save(dataavg, torchfilename)
 
 
 def main(args):
