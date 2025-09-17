@@ -94,7 +94,7 @@ def main(args):
             accuracy.update(outputs, labels)
             running_loss += loss.item()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.train.grdient_max_norm)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.train.gradient_max_norm)
             optimizer.step()
         running_loss /= (i + 1)
         acc = accuracy.compute()
