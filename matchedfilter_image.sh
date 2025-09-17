@@ -1,10 +1,10 @@
 #!/bin/bash
-#PBS -l elapstim_req=01:00:00
+#PBS -l elapstim_req=02:00:00
 #PBS -q gpu
 #PBS -A ML4GW
 #PBS -j o
-#PBS -o log/mfimage_cbc/log_val
-#PBS -t 0-3
+#PBS -o log/mfimage_noise/log_val
+#PBS -t 0-4
 
 # INJECTION_FILE=data/largesnr/ds1_test_cbc/injection.hdf
 # FOREGROUND_FILE=data/largesnr/ds1_test_cbc/foreground.hdf
@@ -21,9 +21,8 @@ pwd
 # 	--foreground=$FOREGROUND_FILE\
 # 	--injection=$INJECTION_FILE\
 apptainer exec --bind `pwd` dl4longcbc.sif ./generate_matched_filter_image.py\
-	--outdir ./data/dataset_250803/test/\
-	--ndata 10\
-	--config config/dataset.ini\
-	--starttime $(($GPSSTART + 24 * 1000 * $PBS_SUBREQNO))\
-    --offset $PBS_SUBREQNO
-
+    --outdir ./data/dataset_250911/test/\
+    --ndata 2000\
+    --config config/dataset.ini\
+    --starttime $(($GPSSTART + $PBS_SUBREQNO * 24 * 2000))\
+    --offset $(($PBS_SUBREQNO * 2))

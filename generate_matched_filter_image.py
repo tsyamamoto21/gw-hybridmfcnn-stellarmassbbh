@@ -2,6 +2,7 @@
 import re
 import os
 import math
+import random
 import h5py
 import pickle
 import subprocess
@@ -172,9 +173,11 @@ def generate_matchedfilter_image(outdir: str, fileidx: int, template_bank: dict,
             with open(strainfilename, 'wb') as fo:
                 pickle.dump(strain, fo)
 
-        # Smearing and storing the data
+        # Random crop and storing the data
+        kstart = random.randint(0, 1024)
+        kend = kstart + 2048
         torchfilename = os.path.join(outdir, f'input_{fileidx:d}_{idx:d}.pth')
-        torch.save(snrlist, torchfilename)
+        torch.save(snrlist[:, :, kstart: kend], torchfilename)
         # dataavg = make_snrmap_coarse(snrlist, sp.kfilter).to(torch.float32)
         # torch.save(dataavg, torchfilename)
 

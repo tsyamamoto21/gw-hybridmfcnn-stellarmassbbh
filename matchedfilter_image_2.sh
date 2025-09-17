@@ -9,8 +9,8 @@ set -x
 module load cuda/12.1.0
 cd $PBS_O_WORKDIR
 apptainer exec --bind `pwd` dl4longcbc.sif ./generate_matched_filter_image_separately.py\
-	--outdir ./data/dataset_250911/validate/\
-	--ndata 125\
+	--outdir ./data/dataset_250911/noise/\
+	--ndata 100\
     --noise\
     --max_workers 2
 
