@@ -10,7 +10,7 @@ SEEDNUMBER=1024
 OUTPUTDIR=data/largesnr/ds1_test_cbc/
 OUTPUT_INJECTION_FILE=$OUTPUTDIR/injection.hdf
 OUTPUT_FOREGROUND_FILE=$OUTPUTDIR/foreground.hdf
-#OUTPUT_BACKGROUND_FILE=$OUTPUTDIR/foreground.hdf
+OUTPUT_BACKGROUND_FILE=$OUTPUTDIR/foreground.hdf
 DURATION=259200
 
 set -x
@@ -21,6 +21,7 @@ apptainer exec --nv --bind /home,/mnt dl4longcbc.sif ./mdc/generate_data.py\
 	-d $DATASETTYPE\
     -i $OUTPUT_INJECTION_FILE\
     -f $OUTPUT_FOREGROUND_FILE\
+    -b $OUTPUT_BACKGROUND_FILE\
 	-s $SEEDNUMBER\
 	--duration $DURATION\
 	--verbose

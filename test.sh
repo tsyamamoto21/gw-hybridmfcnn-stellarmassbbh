@@ -11,8 +11,8 @@ set -x
 module load cuda/12.1.0
 cd $PBS_O_WORKDIR
 apptainer exec --nv --bind `pwd` dl4longcbc.sif ./test.py\
-    --outdir=data/model/own_dataset_generator/20250817_183006/test_cbc/\
-    --modeldir=data/model/own_dataset_generator/20250817_183006/\
-    --datadir=data/dataset_250803/test/\
+    --outdir=data/model/model_250912/20250917_235830/test_noise/\
+    --modeldir=data/model/model_250912/20250917_235830/\
+    --datadir=data/dataset_250911/test/\
     --ndata=10000\
-    --batchsize=500
+    --batchsize=100

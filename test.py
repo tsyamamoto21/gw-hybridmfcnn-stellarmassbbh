@@ -42,8 +42,8 @@ def main(args):
     )
     # num_workers = config.train.num_workers
     nb = args.batchsize
-    # inputpaths, labels = make_pathlist_and_labellist(f'{datadir}/', ['noise'], [0])
-    inputpathlist, labellist = ds.make_pathlist_and_labellist(f'{datadir}/', 10, ['cbc'], [1], snr_threshold=None)
+    inputpathlist, labellist = ds.make_pathlist_and_labellist(f'{datadir}/', 10, ['noise'], [0], snr_threshold=None)
+    # inputpathlist, labellist = ds.make_pathlist_and_labellist(f'{datadir}/', 10, ['cbc'], [1], snr_threshold=None)
     dataset = ds.LabelDataset(inputpathlist, labellist, transform=transforms)
     dataloader = DataLoader(dataset, batch_size=nb, shuffle=False, drop_last=False, num_workers=8)
     ndata = len(inputpathlist)

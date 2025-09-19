@@ -15,8 +15,8 @@ from pycbc.types import load_timeseries
 from pycbc.waveform import get_fd_waveform
 from pycbc.filter import highpass, matched_filter
 from pycbc.conversions import mass1_from_mchirp_eta, mass2_from_mchirp_eta
-import concurrent.futures
-import multiprocessing
+# import concurrent.futures
+# import multiprocessing
 
 
 class MDCResultTriplet:
@@ -162,24 +162,24 @@ def calculate_matchedfilter(seglist, strain_h1, strain_l1, psdh1_interp, psdl1_i
     return snrmap, gpslist
 
 
-# Copilot proposed
-def process_psd_segment(idxpsd, strain_h1, strain_l1, divided_segment_list, template_bank, sp):
-    # strain_h1 = h1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1])
-    # strain_l1 = l1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1])
-    psdh1 = strain_h1.psd(segment_duration=sp.tfft, avg_method='median-mean')
-    psdh1_interp = pycbc.psd.interpolate(psdh1, delta_f=1.0 / sp.duration)
-    psdl1 = strain_l1.psd(segment_duration=sp.tfft, avg_method='median-mean')
-    psdl1_interp = pycbc.psd.interpolate(psdl1, delta_f=1.0 / sp.duration)
-    snrmap, gpslist = calculate_matchedfilter(divided_segment_list[idxpsd], strain_h1, strain_l1, psdh1_interp, psdl1_interp, template_bank, sp)
-    # 仮のニューラルネット処理
-    output = torch.empty((len(gpslist),), dtype=torch.float).normal_(0.0, 1.0)
-    # 結果の抽出
-    threshold = 1.0
-    result_triplets = []
-    for i, stat in enumerate(output):
-        if stat >= threshold:
-            result_triplets.append((gpslist[i], stat, 0.5))
-    return result_triplets
+# # Copilot proposed
+# def process_psd_segment(idxpsd, strain_h1, strain_l1, divided_segment_list, template_bank, sp):
+#     # strain_h1 = h1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1])
+#     # strain_l1 = l1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1])
+#     psdh1 = strain_h1.psd(segment_duration=sp.tfft, avg_method='median-mean')
+#     psdh1_interp = pycbc.psd.interpolate(psdh1, delta_f=1.0 / sp.duration)
+#     psdl1 = strain_l1.psd(segment_duration=sp.tfft, avg_method='median-mean')
+#     psdl1_interp = pycbc.psd.interpolate(psdl1, delta_f=1.0 / sp.duration)
+#     snrmap, gpslist = calculate_matchedfilter(divided_segment_list[idxpsd], strain_h1, strain_l1, psdh1_interp, psdl1_interp, template_bank, sp)
+#     # 仮のニューラルネット処理
+#     output = torch.empty((len(gpslist),), dtype=torch.float).normal_(0.0, 1.0)
+#     # 結果の抽出
+#     threshold = 1.0
+#     result_triplets = []
+#     for i, stat in enumerate(output):
+#         if stat >= threshold:
+#             result_triplets.append((gpslist[i], stat, 0.5))
+#     return result_triplets
 
 
 def main(args):
@@ -262,63 +262,59 @@ def main(args):
         logging.info(f'Start time = {start_time}: Making SNR maps')
 
         tik = time.time()
-        # for idxpsd in range(Npsdsegs):
-        #     # Crop the strain
-        #     strain_h1 = h1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1])
-        #     strain_l1 = l1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1])
-        #     # Estimate PSDs
-        #     psdh1 = strain_h1.psd(segment_duration=sp.tfft, avg_method='median-mean')
-        #     psdh1_interp = pycbc.psd.interpolate(psdh1, delta_f=1.0 / sp.duration)
-        #     psdl1 = strain_l1.psd(segment_duration=sp.tfft, avg_method='median-mean')
-        #     psdl1_interp = pycbc.psd.interpolate(psdl1, delta_f=1.0 / sp.duration)
-        #     # Matched filter
-        #     snrmap, gpslist = calculate_matchedfilter(divided_segment_list[idxpsd], strain_h1, strain_l1, psdh1_interp, psdl1_interp, template_bank, sp)
-        #     # snrmap, gpslist = calculate_matchedfilter_parallelized(divided_segment_list[idxpsd], strain_h1, strain_l1, psdh1_interp, psdl1_interp, template_bank, sp)
+        for idxpsd in range(Npsdsegs):
+            # Crop the strain
+            strain_h1 = h1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1])
+            strain_l1 = l1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1])
+            # Estimate PSDs
+            psdh1 = strain_h1.psd(segment_duration=sp.tfft, avg_method='median-mean')
+            psdh1_interp = pycbc.psd.interpolate(psdh1, delta_f=1.0 / sp.duration)
+            psdl1 = strain_l1.psd(segment_duration=sp.tfft, avg_method='median-mean')
+            psdl1_interp = pycbc.psd.interpolate(psdl1, delta_f=1.0 / sp.duration)
+            # Matched filter
+            snrmap, gpslist = calculate_matchedfilter(divided_segment_list[idxpsd], strain_h1, strain_l1, psdh1_interp, psdl1_interp, template_bank, sp)
+            # snrmap, gpslist = calculate_matchedfilter_parallelized(divided_segment_list[idxpsd], strain_h1, strain_l1, psdh1_interp, psdl1_interp, template_bank, sp)
 
-        #     # Process by neural network
-        #     logging.info(f'Start time = {start_time}: Processing SNR maps by the neural network.')
-        #     logging.warning('!!! To be implemented !!!')
-        #     output = torch.empty((len(gpslist),), dtype=torch.float).normal_(0.0, 1.0)
+            # Process by neural network
+            logging.info(f'Start time = {start_time}: Processing SNR maps by the neural network.')
+            logging.warning('!!! To be implemented !!!')
+            output = torch.empty((len(gpslist),), dtype=torch.float).normal_(0.0, 1.0)
 
-        #     # Get [time, stat, var]
-        #     logging.info(f'Start time = {start_time}: Summarizing into [time, stat, var] triplets.')
-        #     logging.warning('!!! To be implemented !!!')
-        #     threshold = 1.0
-        #     for i, stat in enumerate(output):
-        #         if stat >= threshold:
-        #             mdc_results.add(gpslist[i], stat, 0.5)
+            # Get [time, stat, var]
+            logging.info(f'Start time = {start_time}: Summarizing into [time, stat, var] triplets.')
+            logging.warning('!!! To be implemented !!!')
+            threshold = 1.0
+            for i, stat in enumerate(output):
+                if stat >= threshold:
+                    mdc_results.add(gpslist[i], stat, 0.5)
 
-        #     if idxpsd == 10:
-        #         break
-
-        logging.info(f'Start time = {start_time}: Slicing strain data')
-        sliced_strain_h1 = [h1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1]) for idxpsd in range(Npsdsegs)]
-        sliced_strain_l1 = [l1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1]) for idxpsd in range(Npsdsegs)]
-
-        logging.info(f'Start time = {start_time}: Processing sliced data in parallel')
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            futures = [
-                executor.submit(
-                    process_psd_segment, idxpsd, sliced_strain_h1[idxpsd], sliced_strain_l1[idxpsd],
-                    divided_segment_list, template_bank, sp
-                )
-                for idxpsd in range(min(Npsdsegs, 3))
-            ]
-            for future in concurrent.futures.as_completed(futures):
-                result_triplets = future.result()
-                for t, s, v in result_triplets:
-                    mdc_results.add(t, s, v)
+#         logging.info(f'Start time = {start_time}: Slicing strain data')
+#         sliced_strain_h1 = [h1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1]) for idxpsd in range(Npsdsegs)]
+#         sliced_strain_l1 = [l1_ts.time_slice(psd_segment_list[idxpsd][0], psd_segment_list[idxpsd][1]) for idxpsd in range(Npsdsegs)]
+# 
+#         logging.info(f'Start time = {start_time}: Processing sliced data in parallel')
+#         with concurrent.futures.ProcessPoolExecutor() as executor:
+#             futures = [
+#                 executor.submit(
+#                     process_psd_segment, idxpsd, sliced_strain_h1[idxpsd], sliced_strain_l1[idxpsd],
+#                     divided_segment_list, template_bank, sp
+#                 )
+#                 for idxpsd in range(Npsdsegs)
+#             ]
+#             for future in concurrent.futures.as_completed(futures):
+#                 result_triplets = future.result()
+#                 for t, s, v in result_triplets:
+#                     mdc_results.add(t, s, v)
         tok = time.time()
         break
-    logging.info(f'Elapsed time {tok - tik} seconds')
-    logging.info(f'Scaled elapsed time {(tok - tik) * Npsdsegs / 3} seconds')
-    gc.collect()
+    logging.info(f'Elapsed time {tok - tik} seconds for {Npsdsegs} psdsegments')
+#     gc.collect()
 
     # Save result triples
     logging.info(f'Saving result triples')
     logging.warning('!!! To be implemented !!!')
     mdc_results.dump(args.outputfile)
-    gc.collect()
+#     gc.collect()
     logging.info('Result saved')
 
 
