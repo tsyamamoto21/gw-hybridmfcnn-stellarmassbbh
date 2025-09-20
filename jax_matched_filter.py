@@ -1,8 +1,4 @@
-# from jax.config import config
-# # JAXがfloat64型をサポートするように設定を更新
-# config.update("jax_enable_x64", True)
 import jax.numpy as jnp
-
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -98,7 +94,7 @@ def jax_matched_filter(strain_td: jnp.ndarray, hconj_mat: jnp.ndarray, psd: jnp.
 # Computational speed
 # Generate signal to be processed
 sp = SignalProcessingParameters(
-    duration=16.0,
+    duration=128.0,
     tsegment=1.0,
     fs=2048,
     low_frequency_cutoff=20.0,

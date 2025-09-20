@@ -1,10 +1,6 @@
-# from jax.config import config
-# # JAXがfloat64型をサポートするように設定を更新
-# config.update("jax_enable_x64", True)
-import jax.numpy as jnp
-
 import time
 import numpy as np
+import torch
 import matplotlib.pyplot as plt
 from scipy.signal.windows import tukey
 from pycbc.psd import interpolate
@@ -76,20 +72,20 @@ def numpy_matched_filter(strain_td: np.ndarray, hconj_mat: np.ndarray, psd: np.n
 
 
 # normalize template
-def jax_sigmasq(h2_mat: jnp.ndarray, psd: jnp.ndarray, df: float) -> float:
+def torch_sigmasq(h2_mat: torch.Tensor, psd: torch.Tensor, df: float) -> float:
     assert h2_mat.ndim == 2, "h2_mat does not have dim of 2."
     assert h2_mat.shape[1] == len(psd), "template in frequency domain and PSD does not have the same length."
-    return 4.0 * jnp.trapezoid(h2_mat / psd, dx=df, axis=1)
+    return 4.0 * torch.trapezoid(h2_mat / psd, dx=df, dim=-1)
 
 
-def jax_matched_filter(strain_td: jnp.ndarray, hconj_mat: jnp.ndarray, psd: jnp.ndarray, norm: jnp.ndarray, tlen: int, dt: float) -> jnp.ndarray:
+def torch_matched_filter(strain_td: torch.Tensor, hconj_mat: torch.Tensor, psd: torch.Tensor, norm: torch.Tensor, tlen: int, dt: float) -> torch.Tensor:
     '''
     * hconj must be multiplied by fmask
     * norm = sigmasq = (h|h)
     '''
-    assert hconj_mat.ndim == 2, "hp2_mat does not have dim of 2."
-    assert hconj_mat.shape[1] == len(psd), "template in frequency domain and PSD does not have the same length."
+    assert hconj_mat.ndim == 3, "hp2_mat does not have dim of 2."
     assert hconj_mat.shape[0] == len(norm), "templates in frequency domain and norm does not have the same length."
+    assert hconj_mat.shape[2] == len(psd), "template in frequency domain and PSD does not have the same length."
 
     strain_fd = jnp.fft.rfft(strain_td) * dt
     return 4.0 * jnp.fft.ifft(strain_fd * hconj_mat / psd, tlen, axis=1) / dt / jnp.sqrt(norm[:, jnp.newaxis])
