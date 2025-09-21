@@ -34,7 +34,7 @@ class SignalProcessingParameters:
         self.kappa = kappa
         self.tukey_alpha = tukey_alpha
         self.window = tukey(self.tlen, self.tukey_alpha)
-        self.window_torch = torch.from_numpy(self.window)
+        self.window_torch = torch.from_numpy(self.window).to(torch.float32).to(device='cuda')
 
         # Image properties
         self.width_input = width_input
@@ -46,7 +46,7 @@ class SignalProcessingParameters:
 
         # Get frequency mask
         self.fmask = self._get_frequency_mask()
-        self.fmask_torch = torch.from_numpy(self.fmask)
+        self.fmask_torch = torch.from_numpy(self.fmask).to(torch.float32).to('cuda')
 
     def _get_frequency_mask(self) -> np.ndarray:
         # Get mask
@@ -148,9 +148,9 @@ noise_td_np = np.zeros((2, 1, sp.tlen))
 noise_td_np[0] = noise_h.numpy()
 noise_td_np[1] = noise_l.numpy()
 # To torch
-noise_td_torch = torch.zeros((2, 1, sp.tlen))
-noise_td_torch[0] = torch.from_numpy(noise_h.numpy() * sp.kappa)
-noise_td_torch[1] = torch.from_numpy(noise_l.numpy() * sp.kappa)
+noise_td_torch = torch.zeros((2, 1, sp.tlen), device='cuda')
+noise_td_torch[0] = torch.from_numpy(noise_h.numpy() * sp.kappa).to(torch.float32).to('cuda')
+noise_td_torch[1] = torch.from_numpy(noise_l.numpy() * sp.kappa).to(torch.float32).to('cuda')
 
 # Estimate PSD
 psdh_original = noise_h.psd(sp.tfft, avg_method='median-mean')
@@ -162,9 +162,9 @@ psd_np = np.zeros((2, 1, sp.flen))
 psd_np[0] = psdh_pycbc.numpy()
 psd_np[1] = psdl_pycbc.numpy()
 # to torch
-psd_torch = torch.zeros((2, 1, sp.flen))
-psd_torch[0] = torch.from_numpy(psdh_pycbc.numpy() * sp.kappa**2)
-psd_torch[1] = torch.from_numpy(psdl_pycbc.numpy() * sp.kappa**2)
+psd_torch = torch.zeros((2, 1, sp.flen), dtype=torch.float32, device='cuda')
+psd_torch[0] = torch.from_numpy(psdh_pycbc.numpy() * sp.kappa**2).to(torch.float32).to('cuda')
+psd_torch[1] = torch.from_numpy(psdl_pycbc.numpy() * sp.kappa**2).to(torch.float32).to('cuda')
 
 nptimelist = []
 torchtimelist = []
@@ -175,7 +175,7 @@ for ntemp in ntemplist:
     # template bank
     mgrid = np.linspace(5, 50, ntemp, endpoint=True)
     template_np = np.zeros((1, ntemp, sp.flen), dtype=np.complex128)
-    template_torch = torch.zeros((1, ntemp, sp.flen), dtype=torch.complex64)
+    template_torch = torch.zeros((1, ntemp, sp.flen)).to(torch.complex64).to('cuda')
     template_pycbc = []
 
     for n in range(ntemp):
@@ -190,7 +190,7 @@ for ntemp in ntemplist:
 
         template_pycbc.append(hp_pycbc * sp.kappa)
         template_np[0, n] = hp_pycbc.numpy() * sp.fmask
-        template_torch[0, n] = torch.from_numpy(hp_pycbc.numpy()) * sp.fmask_torch * sp.kappa
+        template_torch[0, n] = torch.from_numpy(hp_pycbc.numpy()).to(torch.complex64).to('cuda') * sp.fmask_torch * sp.kappa
         # hp_conj = hp.conjugate()
         # hp2 = (hp * hp_conj).real
     template_conj_np = template_np.conjugate()
@@ -222,7 +222,7 @@ for ntemp in ntemplist:
     tok = time.time()
     pycbctimelist.append(tok - tik)
 
-    err = np.max(abs(matched_filter_torch[0].numpy() - np.array(matched_filter_pycbc_h)))
+    err = np.max(abs(matched_filter_torch[0].cpu().numpy() - np.array(matched_filter_pycbc_h)))
     errlist.append(err)
 
 
@@ -232,10 +232,10 @@ n = 0
 fig, ax = plt.subplots(2, 1, figsize=(8, 8), sharex=True, tight_layout=True)
 ax[0].plot(matched_filter_pycbc_h[n].real(), label='pycbc', lw=3, color='k', alpha=0.4)
 ax[0].plot(matched_filter_np[0, n].real, label='numpy', lw=1)
-ax[0].plot(matched_filter_torch[0, n].real, label='torch', linestyle='--', lw=1)
+ax[0].plot(matched_filter_torch[0, n].real.cpu(), label='torch', linestyle='--', lw=1)
 ax[1].plot(matched_filter_pycbc_h[n].imag(), label='pycbc', lw=3, color='k', alpha=0.4)
 ax[1].plot(matched_filter_np[0, n].imag, label='numpy', lw=1)
-ax[1].plot(matched_filter_torch[0, n].imag.numpy(), label='torch', linestyle='--', lw=1)
+ax[1].plot(matched_filter_torch[0, n].imag.cpu(), label='torch', linestyle='--', lw=1)
 ax[0].set(ylabel='SNR time series', xlim=[5 * sp.fs, 5.3 * sp.fs])
 ax[1].set(xlabel='time [s]', ylabel='SNR time series', xlim=[5 * sp.fs, 5.3 * sp.fs])
 ax[0].legend()
