@@ -3,16 +3,17 @@ import os
 import time
 import h5py
 import numpy as np
-import torch
+from scipy.signal.windows import tukey, hann
 import logging
 import argparse
 from pathlib import Path
-from scipy.signal.windows import tukey, hann
+import torch
+from torch.nn.functional import interpolate as torch_interpolate
+from omegaconf import OmegaConf
 from pycbc.types import load_timeseries
 from pycbc.waveform import get_fd_waveform
-# from pycbc.filter import highpass, matched_filter
 from pycbc.conversions import mass1_from_mchirp_eta, mass2_from_mchirp_eta
-from torch.nn.functional import interpolate as torch_interpolate
+from dl4longcbc.net import instantiate_neuralnetwork
 
 
 class MDCResultTriplet:
@@ -20,6 +21,9 @@ class MDCResultTriplet:
         self.time = []
         self.stat = []
         self.var = []
+    
+    def __len__(self):
+        return len(self.time)
 
     def add(self, t, s, v):
         self.time.append(float(t))
@@ -31,6 +35,43 @@ class MDCResultTriplet:
             f.create_dataset("time", data=np.array(self.time), compression="gzip")
             f.create_dataset("stat", data=np.array(self.stat), compression="gzip")
             f.create_dataset("var", data=np.array(self.var), compression="gzip")
+
+    def cluster_triggers(self):
+        if len(self) < 2:
+            print("There is no triggers to be clustered.")
+            outresults = self
+        else:
+            outresults = MDCResultTriplet()
+            trigger_list = []
+            stat_list = []
+            ti_buf = self.time[0]
+            si_buf = [self.stat[0]]
+            vi_buf = self.var[0]
+            trigger_buf = [ti_buf - vi_buf, ti_buf + vi_buf]
+            for idx in range(1, len(self)):
+                ti = self.time[idx]
+                si = self.stat[idx]
+                vi = self.var[idx]
+                if self._is_trigger_included_segment(ti, vi, trigger_buf):
+                    trigger_buf[1] = ti + vi
+                    si_buf.append(si)
+                else:
+                    trigger_list.append(trigger_buf)
+                    stat_list.append(np.max(si_buf))
+                    trigger_buf = [ti - vi, ti + vi]
+                    si_buf = [si]
+            trigger_list.append(trigger_buf)
+            stat_list.append(np.max(si_buf))
+            # Newly add the triggers
+            for li, si in zip(trigger_list, stat_list):
+                outresults.add((li[1] + li[0]) / 2.0, si, (li[1] - li[0]) / 2.0)
+            return outresults
+
+    def _is_trigger_included_segment(self, ti, vi, segment):
+        flg = False
+        if ti - vi <= segment[1]:
+            flg = True
+        return flg
 
 
 class SignalProcessingParameters:
@@ -239,6 +280,15 @@ def main(args):
         list_start_time = [int(k) for k in file['H1'].keys()]
     list_start_time.sort()
 
+    # Load trained netrowk
+    config_file = os.path.join(args.modeldir, 'config_train.yaml')
+    model_file = os.path.join(args.modeldir, 'model.pth')
+    config_nn = OmegaConf.load(config_file)
+    model = instantiate_neuralnetwork(config_nn)
+    model.load_state_dict(torch.load(model_file, weights_only=True))
+    model = model.to('cuda')
+    model.eval()
+
     # Prepare result container
     mdc_results = MDCResultTriplet()
 
@@ -284,14 +334,14 @@ def main(args):
 
             # Process by neural network
             logging.info(f'Start time = {start_time}: Processing SNR maps by the neural network.')
-            logging.warning('!!! To be implemented !!!')
-            output = torch.empty((matched_filter_torch_unfolded.shape[0],), dtype=torch.float32).normal_(0.0, 1.0)
+            with torch.no_grad():
+                output = model(matched_filter_torch_unfolded).to('cpu')
 
             # Get [time, stat, var]
             logging.info(f'Start time = {start_time}: Summarizing into [time, stat, var] triplets.')
-            logging.warning('!!! To be implemented !!!')
+            stat_all = output[:, 1] - output[:, 0]
             threshold = 1.0
-            for i, stat in enumerate(output):
+            for i, stat in enumerate(stat_all):
                 if stat >= threshold:
                     mdc_results.add(mfwindow_tstart + sp.tseg // 4 + (i + 1) * sp.tnnw / 2, stat, 0.5)
 
@@ -300,9 +350,10 @@ def main(args):
     logging.info(f'Elapsed time {tok - tik} seconds for {Npsdsegs} psdsegments')
 
     # Save result triples
+    logging.info('Clustering the triggers.')
+    mdc_results_clustered = mdc_results.cluster_triggers()
     logging.info('Saving result triples')
-    logging.warning('!!! To be implemented !!!')
-    mdc_results.dump(args.outputfile)
+    mdc_results_clustered.dump(args.outputfile)
     logging.info('Result saved')
 
 
@@ -310,6 +361,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process MDC data by neural network.')
     parser.add_argument('-i', '--inputfile', type=str, required=True, help='hdf5 file of strain data.')
     parser.add_argument('-o', '--outputfile', type=str, required=True, help='hdf5 file to be output.')
+    parser.add_argument('--modeldir', type=str, required=True, help='Directory where the trained neural network model is saved.')
     args = parser.parse_args()
 
     # Setup logging
