@@ -8,20 +8,22 @@ from pycbc.detector import Detector
 
 
 class LabelDataset(torch.utils.data.Dataset):
-    def __init__(self, signal_mf_filepaths, labels, noise_mf_filepaths, snrrange: list):
+    def __init__(self, signal_mf_filepaths, labels, noise_mf_filepaths, snrrange: list, smearing_kernel=None):
         # self.transform = transform
         self.fp_signal = signal_mf_filepaths
         self.fp_noise = noise_mf_filepaths
         self.data_num = len(signal_mf_filepaths)
         self.noise_num = len(self.fp_noise)
         self.labels = labels
+        self.smearing_kernel = smearing_kernel
         # Transforms
         self.load_zero_noise_mf = LoadZeroNoiseMatchedFilter((2, 256, 3200))
         self.proection_timeshift = ProjectionAndTimeShift()
         self.load_noise_sample = GetNoiseSample()
         self.adjust_amplitude = AdjustAmplitudeToTargetSNR(snrrange[0], snrrange[1])
         self.inject = InjectSignalIntoNoise_in_MFSense()
-        self.smear_snrmap = SmearMFImage()
+        if self.smearing_kernel is not None:
+            self.smear_snrmap = SmearMFImage(self.smearing_kernel)
         self.normalize = NormalizeTensor()
 
     def __len__(self):
@@ -37,7 +39,8 @@ class LabelDataset(torch.utils.data.Dataset):
         zn = self.load_noise_sample([self.fp_noise[idx_noise[0]], self.fp_noise[idx_noise[1]]])
         out_data = self.adjust_amplitude(out_data, zn, out_label)
         out_data = self.inject(zn, out_data)
-        out_data = self.smear_snrmap(out_data)
+        if self.smearing_kernel is not None:
+            out_data = self.smear_snrmap(out_data)
         out_data = self.normalize(out_data).to(torch.float32)
         return out_data, out_label
 

@@ -77,9 +77,9 @@ def main(args):
         # Prepare dataset if schedule flg is True
         flg, snrrange = snr_range_schduler.step(epoch)
         if flg:
-            dataset_tr = ds.LabelDataset(inputpaths_tr, labellists_tr, noisepaths_tr, snrrange)
+            dataset_tr = ds.LabelDataset(inputpaths_tr, labellists_tr, noisepaths_tr, snrrange, smearing_kernel=config.train.smearing_kernel)
             dataloader_tr = DataLoader(dataset_tr, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=num_workers)
-            dataset_val = ds.LabelDataset(inputpaths_val, labellists_val, noisepaths_val, snrrange)
+            dataset_val = ds.LabelDataset(inputpaths_val, labellists_val, noisepaths_val, snrrange, smearing_kernel=config.train.smearing_kernel)
             dataloader_val = DataLoader(dataset_val, batch_size=config.train.batchsize, shuffle=True, drop_last=True, num_workers=num_workers)
 
         model.train()
@@ -94,7 +94,8 @@ def main(args):
             accuracy.update(outputs, labels)
             running_loss += loss.item()
             loss.backward()
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.train.gradient_max_norm)
+            if config.train.gradient_max_norm is not None:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.train.gradient_max_norm)
             optimizer.step()
         running_loss /= (i + 1)
         acc = accuracy.compute()

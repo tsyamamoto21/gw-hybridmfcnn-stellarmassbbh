@@ -33,15 +33,15 @@ def main(args):
     model.eval()
     # <<< Load model <<<
 
-    # Make dataloader
+    # Sequential transformation
+    transforms = nn.Sequential()
+    if config_tr.train.smearing_kernel is not None:
+        transforms.append(ds.SmearMFImage(config_tr.train.smearing_kernel))
+    transforms.append(ds.NormalizeTensor())
+
+    # Make data loader
     input_height = config_tr.net.input_height
     input_width = config_tr.net.input_width
-    transforms = nn.Sequential(
-        # RandomCrop((input_height, input_width)),
-        ds.SmearMFImage(8),
-        ds.NormalizeTensor()
-    )
-    # num_workers = config.train.num_workers
     nb = args.batchsize
     if args.noise:
         inputpathlist, labellist = ds.make_pathlist_and_labellist(f'{datadir}/', 10, ['noise'], [0], snr_threshold=None)

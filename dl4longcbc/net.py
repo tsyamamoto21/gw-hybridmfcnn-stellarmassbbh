@@ -2,6 +2,7 @@ import math
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
+import torchvision.models as models
 
 
 class get_activation_layer(nn.Module):
@@ -20,7 +21,10 @@ class get_activation_layer(nn.Module):
 def instantiate_neuralnetwork(config: DictConfig):
     modeldict = {
         'cnn': MFImageCNN,
-        'cnn_small': MFImageCNN_Small
+        'cnn_small': MFImageCNN_Small,
+        'resnet50': MFImageResnet50,
+        'resnet18': MFImageResnet18,
+        'vit_b_16': MFImageViTB16
     }
     if config.net.modelname in modeldict.keys():
         return modeldict[config.net.modelname](config)
@@ -126,6 +130,77 @@ class MFImageCNN_Small(nn.Module):
         layers.append(nn.Linear(in_features, config.net.out_features))
         # Sequential
         self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.net(x)
+        return x
+
+
+class MFImageResnet18(nn.Module):
+    def __init__(self, config: DictConfig):
+        super(MFImageResnet18, self).__init__()
+        self.net = models.resnet18(weights=None)
+
+        # Chenge the channels of the first convolutional layer
+        self.net.conv1 = nn.Conv2d(
+            in_channels=config.net.input_channel,
+            out_channels=self.net.conv1.out_channels,
+            kernel_size=self.net.conv1.kernel_size,
+            stride=self.net.conv1.stride,
+            padding=self.net.conv1.padding,
+            bias=self.net.conv1.bias
+        )
+        
+        # Change the last layer
+        num_ftrs = self.net.fc.in_features
+        self.net.fc = nn.Linear(num_ftrs, config.net.out_features)
+
+    def forward(self, x):
+        x = self.net(x)
+        return x
+
+
+class MFImageResnet50(nn.Module):
+    def __init__(self, config: DictConfig):
+        super(MFImageResnet50, self).__init__()
+        self.net = models.resnet50(weights=None)
+
+        # Chenge the channels of the first convolutional layer
+        self.net.conv1 = nn.Conv2d(
+            in_channels=config.net.input_channel,
+            out_channels=self.net.conv1.out_channels,
+            kernel_size=self.net.conv1.kernel_size,
+            stride=self.net.conv1.stride,
+            padding=self.net.conv1.padding,
+            bias=self.net.conv1.bias
+        )
+        
+        # Change the last layer
+        num_ftrs = self.net.fc.in_features
+        self.net.fc = nn.Linear(num_ftrs, config.net.out_features)
+
+    def forward(self, x):
+        x = self.net(x)
+        return x
+
+
+class MFImageViTB16(nn.Module):
+    def __init__(self, config: DictConfig):
+        super(MFImageViTB16, self).__init__()
+        assert config.net.input_height == config.net.input_width, "For vit_b_16, input height and input width must be equal."
+        self.net = models.vit_b_16(weights=None, image_size=config.net.input_height)
+
+        # Chenge the channels of the first convolutional layer
+        self.net.conv_proj = nn.Conv2d(
+            in_channels=config.net.input_channel,
+            out_channels=self.net.conv_proj.out_channels,
+            kernel_size=self.net.conv_proj.kernel_size,
+            stride=self.net.conv_proj.stride,
+            padding=self.net.conv_proj.padding
+        )
+        
+        # Change the last layer
+        self.net.heads.head = nn.Linear(self.net.heads.head.in_features, config.net.out_features)
 
     def forward(self, x):
         x = self.net(x)

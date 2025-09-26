@@ -10,4 +10,4 @@
 set -x
 module load cuda/12.1.0
 cd $PBS_O_WORKDIR
-apptainer exec --nv --bind `pwd` dl4longcbc.sif ./train.py --dirname smearing_ksize5-5_channels256_relu
+apptainer exec --nv --bind `pwd` dl4longcbc.sif ./train.py --dirname smearing_vitb16
