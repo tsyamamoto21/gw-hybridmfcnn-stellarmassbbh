@@ -20,14 +20,14 @@ def main(args):
     outdir = args.outdir
     if_not_exist_makedir(outdir)
     ndata = args.ndata
-    config_tr = OmegaConf.load(f'{modeldir}/config_train.yaml')
+    config_tr = OmegaConf.load(os.path.join(modeldir, 'config_train.yaml'))
 
     # Set device
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # >>> Load model >>>
     model = instantiate_neuralnetwork(config_tr)
-    model.load_state_dict(torch.load(f'{modeldir}/model.pth', weights_only=True))
+    model.load_state_dict(torch.load(os.path.join(modeldir, 'model.pth'), weights_only=True))
     model = model.to(device)
     model.eval()
     # <<< Load model <<<
@@ -41,9 +41,9 @@ def main(args):
     # Make data loader
     nb = args.batchsize
     if args.noise:
-        inputpathlist, labellist = ds.make_pathlist_and_labellist(f'{datadir}/', 10, ['noise'], [0], snr_threshold=None)
+        inputpathlist, labellist = ds.make_pathlist_and_labellist(datadir, 10, ['noise'], [0], snr_threshold=None)
     elif args.cbc:
-        inputpathlist, labellist = ds.make_pathlist_and_labellist(f'{datadir}/', 10, ['cbc'], [1], snr_threshold=None)
+        inputpathlist, labellist = ds.make_pathlist_and_labellist(datadir, 10, ['cbc'], [1], snr_threshold=None)
     dataset = ds.LabelDataset(inputpathlist, labellist, transform=transforms)
     dataloader = DataLoader(dataset, batch_size=nb, shuffle=False, drop_last=False, num_workers=8)
     ndata = len(inputpathlist)

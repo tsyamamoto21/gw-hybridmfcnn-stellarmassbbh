@@ -79,7 +79,7 @@ def make_pathlist_and_labellist(datadir, n_subset, labelnames, labels=None, snr_
     labellist = []
     for label, labelname in zip(labels, labelnames):
         for idx_subset in range(n_subset):
-            target_dir = f'{datadir}/{labelname}/'
+            target_dir = os.path.join(datadir, labelname)
             assert os.path.exists(target_dir), f"Directory `{target_dir}` does not exist."
             if snr_threshold is not None:
                 snrth = SNRThreshold(target_dir, idx_subset, snr_threshold)
@@ -88,7 +88,7 @@ def make_pathlist_and_labellist(datadir, n_subset, labelnames, labels=None, snr_
                 flg = True
                 if snr_threshold is not None:
                     flg = snrth.is_above_snrthreshold(idx)
-                filename = f'{target_dir}/input_{idx_subset}_{idx}.pth'
+                filename = os.path.join(target_dir, f'input_{idx_subset}_{idx}.pth')
                 if os.path.exists(filename) and flg:
                     filelist.append(filename)
                     labellist.append(label)
@@ -102,7 +102,7 @@ class SNRThreshold():
         '''
         assert (mode == 'both') or (mode == 'either'), 'Choose both or either'
         self.dirname = dirname
-        self.pklfile = f'{dirname}/snrlist_{idx_subset:d}.pkl'
+        self.pklfile = os.path.join(dirname, f'snrlist_{idx_subset:d}.pkl')
         with open(self.pklfile, 'rb') as fo:
             self.snrlist = pickle.load(fo)
         self.snr_threshold = snr_threshold

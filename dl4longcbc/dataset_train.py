@@ -204,7 +204,7 @@ def load_dataset(datadir, labelnamelist, imgsize, labellist=None):
     ndatalist = {}
     ndata = 0
     for labelname in labelnamelist:
-        target_dir = f'{datadir}/{labelname}/'
+        target_dir = os.path.join(datadir, labelname)
         assert os.path.exists(target_dir), f"Directory `{target_dir}` does not exist."
         all_files = os.listdir(target_dir)
         filelist[labelname] = [f for f in all_files if pattern.fullmatch(f)]
@@ -216,9 +216,9 @@ def load_dataset(datadir, labelnamelist, imgsize, labellist=None):
     label_tensors = torch.zeros((ndata,), dtype=torch.long)
     idx = 0
     for (label, labelname) in zip(labellist, labelnamelist):
-        target_dir = f'{datadir}/{labelname}/'
+        target_dir = os.path.join(datadir, labelname)
         for j in range(ndatalist[labelname]):
-            input_tensors[idx] = torch.load(f"{target_dir}/{filelist[labelname][j]}")
+            input_tensors[idx] = torch.load(os.path.join(target_dir, f"{filelist[labelname][j]}"))
             label_tensors[idx] = label
             print(f'{labelname}: {idx} th data loaded.')
             idx += 1
