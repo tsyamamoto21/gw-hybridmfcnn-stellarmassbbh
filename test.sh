@@ -8,7 +8,7 @@
 
 #------- Program execution -------
 set -x
-MODELNAME=noschedule_gmn10.0_ksize5-13_channels64_relu
+MODELNAME=smearing_vitb16
 module load cuda/12.1.0
 cd $PBS_O_WORKDIR
 apptainer exec --nv --bind `pwd` dl4longcbc.sif ./test.py\
