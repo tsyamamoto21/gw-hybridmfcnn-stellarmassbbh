@@ -16,7 +16,7 @@ DURATION=259200
 set -x
 #module load cuda/12.1.0
 
-#cd $PBS_O_WORKDIR
+cd $PBS_O_WORKDIR
 apptainer exec --nv --bind /home,/mnt dl4longcbc.sif ./mdc/generate_data.py\
 	-d $DATASETTYPE\
     -i $OUTPUT_INJECTION_FILE\
