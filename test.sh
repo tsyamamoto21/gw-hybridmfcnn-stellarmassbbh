@@ -8,7 +8,7 @@
 
 #------- Program execution -------
 set -x
-MODELNAME=smearingkernel2_ksize5-5_channels64_relu
+MODELNAME=snrlowerbound15
 module load cuda/12.1.0
 cd $PBS_O_WORKDIR
 apptainer exec --nv --bind `pwd` dl4longcbc.sif ./test.py\
