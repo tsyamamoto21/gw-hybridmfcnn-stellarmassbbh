@@ -10,7 +10,7 @@ import argparse
 from pathlib import Path
 import torch
 from torch.nn.functional import interpolate as torch_interpolate
-# from omegaconf import OmegaConf
+from omegaconf import OmegaConf
 from pycbc.types import load_timeseries
 from pycbc.waveform import get_fd_waveform
 from pycbc.conversions import mass1_from_mchirp_eta, mass2_from_mchirp_eta
