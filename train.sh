@@ -4,10 +4,10 @@
 #PBS -A ML4GW
 #PBS -l elapstim_req=24:00:00
 #PBS -j o
-#PBS -o log/neuralnet/train3.log
+#PBS -o log/neuralnet/train.log
 
 #------- Program execution -------
 set -x
 module load cuda/12.1.0
 cd $PBS_O_WORKDIR
-apptainer exec --nv --bind `pwd` dl4longcbc.sif ./train.py --dirname snrlowerbound15
+apptainer exec --nv --bind `pwd` dl4longcbc.sif ./train.py --dirname smearing_ksize5-5_channels64_relu

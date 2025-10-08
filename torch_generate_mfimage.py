@@ -216,8 +216,8 @@ def generate_noise_matchedfilter_image(outdir: str, fileidx: int, template_conj:
     # Generate strain
     noisestrain = pycbc.noise.noise_from_psd(sp.tlen, sp.dt, psd)
     noisestrain = highpass(noisestrain, 15.0)
-    strain = torch.zeros((2, 1, len(noisestrain)), dtype=torch.float32)  # 2nd row is just dummy
-    strain[0, 0] = torch.from_numpy(noisestrain.numpy() * sp.kappa).to(dtype=torch.float32)
+    strain = torch.zeros((2, 1, len(noisestrain)), dtype=torch.float32, device='cuda')  # 2nd row is just dummy
+    strain[0, 0] = torch.from_numpy(noisestrain.numpy() * sp.kappa).to(dtype=torch.float32, device='cuda')
 
     # Estimate PSD
     psd_torch = torch_estimate_psd(strain[:, 0], sp)

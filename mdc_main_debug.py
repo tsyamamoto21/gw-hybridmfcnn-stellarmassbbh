@@ -227,7 +227,7 @@ def torch_matched_filter(strain_td: torch.Tensor, hconj_mat: torch.Tensor, psd: 
 
 
 def main(args):
-
+    flg_savefig = True
     # Time series property
     logging.info('Set the time series property.')
     sp = SignalProcessingParameters(
@@ -308,8 +308,12 @@ def main(args):
         # logging.info(f'Start time = {start_time}: Loading strains')
         h1_ts = load_timeseries(args.inputfile, group=f'H1/{start_time}')
         l1_ts = load_timeseries(args.inputfile, group=f'L1/{start_time}')
+        h1_ts = highpass(h1_ts, 15.0)
+        l1_ts = highpass(l1_ts, 15.0)
         duration = h1_ts.duration
         start_time_gps = h1_ts.start_time
+        logging.debug(f'{start_time_gps}, {type(start_time_gps)}')
+        logging.debug(f'{start_time}, {type(start_time)}')
 
         # Into torch tensor
         strain = torch.zeros((2, 1, len(h1_ts)), dtype=torch.float32, device='cuda')
@@ -342,13 +346,18 @@ def main(args):
                 kend = sp.tlen * 3 // 4 + sp.nnw_overlap
                 mfwindow_tstart = start_time_gps + idxpsd * (sp.duration / 2)
             matched_filter_torch_unfolded = matched_filter_torch[:, :, kstart: kend].unfold(dimension=2, size=sp.nnw_len, step=sp.nnw_overlap).permute(2, 0, 1, 3)
+            logging.debug(f'{mfwindow_tstart}')
+            if flg_savefig:
+                torch.save(matched_filter_torch_unfolded.to('cpu'), os.path.join(args.modeldir, 'mftorch_unfolded.pth'))
 
             # Process by neural network
             # logging.info(f'Start time = {start_time}: Processing SNR maps by the neural network.')
             with torch.no_grad():
                 inputs = torch.vmap(transform_tensors)(torch.abs(matched_filter_torch_unfolded))
                 outputs = model(inputs).to('cpu')
-
+            if flg_savefig:
+                torch.save(inputs.to('cpu'), os.path.join(args.modeldir, 'mdc_inputs.pth'))
+                flg_savefig = False
             # Get [time, stat, var]
             # logging.info(f'Start time = {start_time}: Summarizing into [time, stat, var] triplets.')
             stat_all = outputs[:, 1] - outputs[:, 0]
@@ -379,7 +388,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Setup logging
-    log_level = logging.INFO
+    log_level = logging.DEBUG
     logging.basicConfig(format='%(levelname)-8s | %(asctime)s | %(message)s',
                         level=log_level, datefmt='%Y-%m-%d %H:%M:%S')
 

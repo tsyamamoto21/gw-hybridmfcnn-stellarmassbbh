@@ -33,5 +33,4 @@ apptainer exec --nv --bind `pwd` dl4longcbc.sif ./mdc/evaluate.py\
     --foreground-events $OUTPUTDIRECTORY/fg.hdf\
     --foreground-files data/mdc/ds1/foreground.hdf\
     --background-events $OUTPUTDIRECTORY/bg.hdf\
-    --output-file $OUTPUTDIRECTORY/eval.hdf
-
+    --output-file $OUTPUTDIRECTORY/eval.hdf\
