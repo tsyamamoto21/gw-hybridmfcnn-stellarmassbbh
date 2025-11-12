@@ -216,7 +216,7 @@ def generate_noise_matchedfilter_image(outdir: str, fileidx: int, template_conj:
     # Generate strain
     noisestrain = pycbc.noise.noise_from_psd(sp.tlen, sp.dt, psd)
     noisestrain = highpass(noisestrain, 15.0)
-    strain = torch.zeros((2, 1, len(noisestrain)), dtype=torch.float32, device='cuda')  # 2nd row is just dummy
+    strain = torch.ones((2, 1, len(noisestrain)), dtype=torch.float32, device='cuda')  # 2nd row is just dummy
     strain[0, 0] = torch.from_numpy(noisestrain.numpy() * sp.kappa).to(dtype=torch.float32, device='cuda')
 
     # Estimate PSD
@@ -230,7 +230,8 @@ def generate_noise_matchedfilter_image(outdir: str, fileidx: int, template_conj:
     kstart = sp.tlen // 4
     kend = sp.tlen * 3 // 4
     torchfilename = os.path.join(outdir, f'noisemf_{fileidx:d}.pth')
-    torch.save(matched_filter_torch[:, kstart: kend].to('cpu'), torchfilename)
+    logging.debug(f'{matched_filter_torch.size()}')
+    torch.save(matched_filter_torch[0, :, kstart: kend].to('cpu'), torchfilename)
 
 
 def main(args):
@@ -326,10 +327,14 @@ if __name__ == '__main__':
     parser.add_argument('--noise', action='store_true', help='Noise mf image')
     parser.add_argument('--signal', action='store_true', help='Signal mf image')
     parser.add_argument('--offset', type=int, default=0)
+    parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
 
     # Setup logging
-    log_level = logging.INFO
+    if args.debug:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
     logging.basicConfig(format='%(levelname)-8s | %(asctime)s | %(message)s',
                         level=log_level, datefmt='%Y-%m-%d %H:%M:%S')
 

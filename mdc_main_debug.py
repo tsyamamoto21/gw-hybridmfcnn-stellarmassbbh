@@ -39,6 +39,12 @@ class MDCResultTriplet:
             f.create_dataset("stat", data=np.array(self.stat), compression="gzip")
             f.create_dataset("var", data=np.array(self.var), compression="gzip")
 
+    def sort_triggers_in_time(self):
+        ksort = np.argsort(self.time)
+        self.time = [self.time[k] for k in ksort]
+        self.stat = [self.stat[k] for k in ksort]
+        self.var = [self.var[k] for k in ksort]
+
     def cluster_triggers(self):
         if len(self) < 2:
             print("There is no triggers to be clustered.")
@@ -227,7 +233,7 @@ def torch_matched_filter(strain_td: torch.Tensor, hconj_mat: torch.Tensor, psd: 
 
 
 def main(args):
-    flg_savefig = True
+    count_savefig = 0
     # Time series property
     logging.info('Set the time series property.')
     sp = SignalProcessingParameters(
@@ -324,8 +330,7 @@ def main(args):
         strain_folded = fold_tensor(strain, sp)
         Npsdsegs = strain_folded.shape[0]
 
-        # Prepare empty tensors
-        # logging.info(f'Start time = {start_time}: Making SNR maps')
+        logging.debug(f'Start time = {start_time}: Making SNR maps')
 
         tik = time.time()
         for idxpsd in range(Npsdsegs):
@@ -347,24 +352,28 @@ def main(args):
                 mfwindow_tstart = start_time_gps + idxpsd * (sp.duration / 2)
             matched_filter_torch_unfolded = matched_filter_torch[:, :, kstart: kend].unfold(dimension=2, size=sp.nnw_len, step=sp.nnw_overlap).permute(2, 0, 1, 3)
             logging.debug(f'{mfwindow_tstart}')
-            if flg_savefig:
-                torch.save(matched_filter_torch_unfolded.to('cpu'), os.path.join(args.modeldir, 'mftorch_unfolded.pth'))
+            if count_savefig < 10:
+                logging.debug(f'mftorch_unfolded saved ({count_savefig})')
+                torch.save(matched_filter_torch_unfolded.to('cpu'), os.path.join(args.modeldir, f'mftorch_unfolded_{count_savefig}.pth'))
 
             # Process by neural network
             # logging.info(f'Start time = {start_time}: Processing SNR maps by the neural network.')
             with torch.no_grad():
                 inputs = torch.vmap(transform_tensors)(torch.abs(matched_filter_torch_unfolded))
                 outputs = model(inputs).to('cpu')
-            if flg_savefig:
-                torch.save(inputs.to('cpu'), os.path.join(args.modeldir, 'mdc_inputs.pth'))
-                flg_savefig = False
+            if count_savefig < 10:
+                logging.debug(f'mdc_inputs saved ({count_savefig})')
+                torch.save(inputs.to('cpu'), os.path.join(args.modeldir, f'mdc_inputs_{count_savefig}.pth'))
+                count_savefig += 1
+            if count_savefig == 10:
+                break
             # Get [time, stat, var]
             # logging.info(f'Start time = {start_time}: Summarizing into [time, stat, var] triplets.')
             stat_all = outputs[:, 1] - outputs[:, 0]
             for i, stat in enumerate(stat_all):
-                mdc_results.add(mfwindow_tstart + sp.duration // 4 + (i + 1) * sp.tnnw / 2, stat, 0.5)
-                # if stat >= threshold:
-                #     mdc_results.add(mfwindow_tstart + sp.tseg // 4 + (i + 1) * sp.tnnw / 2, stat, 0.5)
+                # mdc_results.add(mfwindow_tstart + sp.duration // 4 + (i + 1) * sp.tnnw / 2, stat, 0.5)
+                if stat >= threshold:
+                    mdc_results.add(mfwindow_tstart + sp.duration // 4 + (i + 1) * sp.tnnw / 2, stat, 0.5)
 
         tok = time.time()
     logging.info(f'Elapsed time {tok - tik} seconds for {Npsdsegs} psdsegments')
@@ -376,6 +385,8 @@ def main(args):
     # mdc_results_clustered.dump(args.outputfile)
 
     logging.info('Saving result triples')
+    mdc_results.sort_triggers_in_time()
+    mdc_results = mdc_results.cluster_triggers()
     mdc_results.dump(args.outputfile)
     logging.info('Result saved')
 
@@ -392,6 +403,8 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)-8s | %(asctime)s | %(message)s',
                         level=log_level, datefmt='%Y-%m-%d %H:%M:%S')
 
+    logging.debug(f'{args}')
+    
     assert os.path.exists(args.inputfile), f"Input file {args.inputfile} does not exist."
     assert Path(args.inputfile).suffix == '.hdf', f"Input file must be an hdf5 file. (Given {args.inputfile})"
     assert Path(args.outputfile).suffix == '.hdf', f"Output file must be an hdf5 file. (Given {args.outputfile})"

@@ -10,6 +10,6 @@ module load cuda/12.1.0
 cd $PBS_O_WORKDIR
 apptainer exec --nv --bind `pwd` dl4longcbc.sif ./torch_generate_mfimage.py\
 	--outdir ./data/dataset_250911/train/\
-	--ndata 2500\
+	--ndata 11250\
     --noise\
-    --offset 10000
+    --offset 1250

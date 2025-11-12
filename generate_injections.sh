@@ -1,13 +1,13 @@
 #!/bin/bash
-#PBS -l elapstim_req=20:00:00
+#PBS -l elapstim_req=00:30:00
 #PBS -q gpu
 #PBS -A ML4GW
 #PBS -o log/generate_injections.out
 #PBS -e log/generate_injections.out
 
-DATASETTYPE=1
+DATASETTYPE=4
 SEEDNUMBER=2514409456
-OUTPUTDIR=data/mdc/ds1_largesnr/
+OUTPUTDIR=data/mdc/ds4_largesnr/
 OUTPUT_INJECTION_FILE=$OUTPUTDIR/injection.hdf
 OUTPUT_FOREGROUND_FILE=$OUTPUTDIR/foreground.hdf
 OUTPUT_BACKGROUND_FILE=$OUTPUTDIR/background.hdf
