@@ -64,10 +64,49 @@ Notebook `XXX` is used for analyzing the test results.
 
 ## generate MDC dataset
 
+```
+./mdc/generate_data.py\
+	-d ds1\
+    -i <mdc_data_directory>/injection.hdf\
+    -f <mdc_data_directory>/foreground.hdf\
+    -b <mdc_data_directory>/background.hdf\
+	-s 2514409456\
+	--duration 2592000\
+	--verbose
+```
 
 ## apply the trained CNN to MDC dataset
+
+Process background data
+
+```
+./mdc_main.py\
+   -i <mdc_data_directory>/background.hdf\
+   -o <path_to_cnn_model>/ds1/bg.hdf\
+   --modeldir <path_to_cnn_model>
+```
+
+Process foreground data
+
+```
+./mdc_main.py\
+   -i <mdc_data_directory>/foreground.hdf\
+   -o <path_to_cnn_model>/ds1/fg.hdf\
+   --modeldir <path_to_cnn_model>
+```
+
+Evaluate the results
+
+```
+./mdc/evaluate.py\
+    --injection-file <mdc_data_directory>/injection.hdf\
+    --foreground-events <path_to_cnn_model>/ds1/fg.hdf\
+    --foreground-files <mdc_data_directory>/foreground.hdf\
+    --background-events <path_to_cnn_model>/ds1/bg.hdf\
+    --output-file <path_to_cnn_model>/ds1/eval.hdf\
+```
 
 
 ## Compare the sensitivities
 
-
+Run the notebook `XXX`
