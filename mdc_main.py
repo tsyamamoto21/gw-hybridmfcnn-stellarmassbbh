@@ -289,9 +289,9 @@ def main(args):
     logging.info('Loading the trained neural network.')
     config_file = os.path.join(args.modeldir, 'config_train.yaml')
     model_file = os.path.join(args.modeldir, 'model.pth')
-    stat_file = os.path.join(args.modeldir, 'noise_statistics.pkl')
-    with open(stat_file, 'rb') as fo:
-        threshold = pickle.load(fo)['threshold']
+    # stat_file = os.path.join(args.modeldir, 'noise_statistics.pkl')
+    # with open(stat_file, 'rb') as fo:
+    #     threshold = pickle.load(fo)['threshold']
     config_nn = OmegaConf.load(config_file)
     model = instantiate_neuralnetwork(config_nn)
     model.load_state_dict(torch.load(model_file, weights_only=True))
@@ -362,17 +362,11 @@ def main(args):
             stat_all = outputs[:, 1] - outputs[:, 0]
             for i, stat in enumerate(stat_all):
                 # mdc_results.add(mfwindow_tstart + sp.duration // 4 + (i + 1) * sp.tnnw / 2, stat, 0.5)
-                if stat >= threshold:
+                if stat >= 0.0:
                     mdc_results.add(mfwindow_tstart + sp.duration // 4 + (i + 1) * sp.tnnw / 2, stat, 0.5)
 
         tok = time.time()
     logging.info(f'Elapsed time {tok - tik} seconds for {Npsdsegs} psdsegments')
-
-    # # Save result triples
-    # logging.info('Clustering the triggers.')
-    # mdc_results_clustered = mdc_results.cluster_triggers()
-    # logging.info('Saving result triples')
-    # mdc_results_clustered.dump(args.outputfile)
 
     logging.info('Saving result triples')
     mdc_results.sort_triggers_in_time()
