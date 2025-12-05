@@ -63,10 +63,10 @@ class LoadZeroNoiseMatchedFilter(nn.Module):
 
     def forward(self, filepath):
         if filepath is None:
-            x = torch.zeros(size=self.shape, dtype=torch.complex128)
+            x = torch.zeros(size=self.shape, dtype=torch.complex64)
         else:
             x = torch.load(filepath, weights_only=False)
-            assert x.dtype == torch.complex128, "Loaded data is not torch.complex128."
+            assert x.dtype == torch.complex64, "Loaded data is not torch.complex64."
             assert x.size() == self.shape, f"Size is not appropriate, loaded size {x.size()}, required {self.shape}"
         return x
 
@@ -106,7 +106,7 @@ class ProjectionAndTimeShift(nn.Module):
         kstart2 = kstart1 + kshift
         kend2 = kstart2 + self.w_tar
         # Crop the data
-        xout = torch.zeros((2, height, self.w_tar), dtype=torch.complex128)
+        xout = torch.zeros((2, height, self.w_tar), dtype=torch.complex64)
         xout[0] = Fp1 * Ap * x[0, :, kstart1: kend1] + Fc1 * Ac * x[1, :, kstart1: kend1]
         xout[1] = Fp2 * Ap * x[0, :, kstart2: kend2] + Fc2 * Ac * x[1, :, kstart2: kend2]
         return xout
@@ -122,7 +122,7 @@ class GetNoiseSample(nn.Module):
 
     def forward(self, filepaths: list):
         channel = len(filepaths)
-        xout = torch.zeros((channel, 256, 2048), dtype=torch.complex128)
+        xout = torch.zeros((channel, 256, 2048), dtype=torch.complex64)
         for c in range(channel):
             kstart = random.randint(self.kstart_min, self.kstart_max)
             xout[c] = torch.load(filepaths[c], weights_only=False)[:, kstart: kstart + self.w_tar]
