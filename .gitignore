@@ -7,7 +7,6 @@ bin/
 build/
 config_old/
 data/
-!data/model/
 data
 figure/
 log/
