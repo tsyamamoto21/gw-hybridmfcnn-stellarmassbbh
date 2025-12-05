@@ -6,6 +6,7 @@ archive/
 bin/
 build/
 config/
+config_old/
 data/
 data
 figure/
