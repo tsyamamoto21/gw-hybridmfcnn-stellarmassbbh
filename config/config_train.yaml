@@ -1,0 +1,75 @@
+train:
+    experiment_name: "model_250912"
+    num_epochs: 150
+    batchsize: 128
+    loss:
+        _target_: "torch.nn.BCEWithLogitsLoss"
+    optimizer:
+        _target_: "torch.optim.Adam"
+        lr: 1.0e-4
+    num_workers: 16
+#     snr_schedule: [[0, 150, 5, 40]]
+    snr_schedule: [
+        [0, 3, 15, 40],
+        [3, 15, 10, 40],
+        [15, 30, 8, 40],
+        [30, 60, 6, 40],
+        [60, 150, 5, 40]
+    ]
+    # [epoch start, epoch end, snr min, snr max]
+    gradient_max_norm: null
+    smearing_kernel: 8
+
+dataset:
+    directory: data/dataset_250911
+    signals_tr: 10000
+    signals_val: 1000
+    noises_tr: 1250
+    noises_val: 125
+
+net:
+    modelname: cnn_small
+    input_height: 256
+    input_width: 256
+    input_channel: 2
+    out_features: 2
+    # >>> CNN >>>
+    activation: ReLU
+    num_conv_layers: 4
+    conv_1_out_channels: 64
+    conv_1_kernel_size: 5
+    conv_1_stride: 1
+    conv_1_padding: 1
+    pool_1_kernel_size: 2
+    pool_1_stride: 2
+    pool_1_padding: 0
+    pool_1_dilation: 1
+    conv_2_out_channels: 64
+    conv_2_kernel_size: 5
+    conv_2_stride: 1
+    conv_2_padding: 1
+    pool_2_kernel_size: 2
+    pool_2_stride: 2
+    pool_2_padding: 0
+    pool_2_dilation: 1
+    conv_3_out_channels: 64
+    conv_3_kernel_size: 5
+    conv_3_stride: 1
+    conv_3_padding: 1
+    pool_3_kernel_size: 2
+    pool_3_stride: 2
+    pool_3_padding: 0
+    pool_3_dilation: 1
+    conv_4_out_channels: 64
+    conv_4_kernel_size: 5
+    conv_4_stride: 1
+    conv_4_padding: 1
+    pool_4_kernel_size: 2
+    pool_4_stride: 2
+    pool_4_padding: 0
+    pool_4_dilation: 1
+    num_linear_layers: 2
+    linear_1_size: 64
+    linear_2_size: 64
+    # <<< CNN <<<
+
