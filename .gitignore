@@ -5,6 +5,8 @@
 archive/
 bin/
 build/
+config/config_train.yaml
+config/dataset.ini
 config_old/
 data/
 data
