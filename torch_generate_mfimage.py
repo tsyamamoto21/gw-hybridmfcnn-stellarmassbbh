@@ -311,6 +311,7 @@ def main(args):
         psd[0, 0] = torch.from_numpy(psd_analytic.numpy() * sp.kappa**2)
         psd[1, 0] = torch.from_numpy(psd_analytic.numpy() * sp.kappa**2)
         psd += 1.0e-10
+        psd = psd.to(device='cuda')
         for n in range(args.offset, args.offset + ndata):
             generate_signal_matchedfilter_image(outdir_and_label, n, template_conj, template_2, sp, psd)
     else:
