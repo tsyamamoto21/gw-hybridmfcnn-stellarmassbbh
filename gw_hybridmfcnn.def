@@ -15,8 +15,8 @@ From: ubuntu:24.04
   /bin/sh Miniforge3-Linux-x86_64.sh -bfp /opt/miniforge
   /opt/miniforge/bin/conda shell.bash hook > /opt/miniforge/conda_init.sh
   . /opt/miniforge/conda_init.sh
-  conda create -n dl4longcbc python=3.11
-  conda activate dl4longcbc
+  conda create -n gw_hybridmfcnn python=3.11
+  conda activate gw_hybridmfcnn
   conda install -c conda-forge opencv numpy scipy scikit-learn jax cupy matplotlib jupyter h5py
   conda install -c conda-forge lal PyCBC
   conda install pytorch torchvision torchaudio pytorch-cuda=12.1 torchinfo -c pytorch -c nvidia
@@ -28,13 +28,13 @@ From: ubuntu:24.04
   # conda の shell hook を読み込む
   eval "$(conda shell.bash hook)"
   # conda 環境を activate
-  conda activate dl4longcbc
+  conda activate gw_hybridmfcnn
 
 %labels
   Author Takahiro S Yamamoto
   Version 0.0.1
 
 %help
-  Python environment for dl4longcbc project
+  Python environment for gw_hybridmfcnn project
 
 %runscript
