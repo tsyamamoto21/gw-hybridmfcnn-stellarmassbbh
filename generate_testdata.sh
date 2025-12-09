@@ -16,11 +16,11 @@ set -x
 module load cuda/12.1.0
 cd $PBS_O_WORKDIR
 pwd
-# apptainer exec --bind /home,/mnt dl4longcbc.sif ./use_mdc_generate_matchedfilter_image.py\
+# apptainer exec --bind /home,/mnt gw_hybridmfcnn.sif ./use_mdc_generate_matchedfilter_image.py\
 # 	--outdir=data/dataset_250729/test/cbc\
 # 	--foreground=$FOREGROUND_FILE\
 # 	--injection=$INJECTION_FILE\
-apptainer exec --bind `pwd` dl4longcbc.sif ./generate_matched_filter_image.py\
+apptainer exec --bind `pwd` gw_hybridmfcnn.sif ./generate_matched_filter_image.py\
     --outdir ./data/dataset_250911/test/\
     --ndata 2000\
     --config config/dataset.ini\

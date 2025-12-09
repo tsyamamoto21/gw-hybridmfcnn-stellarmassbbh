@@ -12,7 +12,7 @@ EXPERIMENTNAME=251112_retrain
 MODELNAME=smearing_ksize5-5_channels64_relu_3
 module load cuda/12.1.0
 cd $PBS_O_WORKDIR
-apptainer exec --nv --bind `pwd` dl4longcbc.sif ./test.py\
+apptainer exec --nv --bind `pwd` gw_hybridmfcnn.sif ./test.py\
     --outdir=data/model/$EXPERIMENTNAME/$MODELNAME/test_cbc/\
     --modeldir=data/model/$EXPERIMENTNAME/$MODELNAME/\
     --datadir=data/dataset_250911/test/\
@@ -20,7 +20,7 @@ apptainer exec --nv --bind `pwd` dl4longcbc.sif ./test.py\
     --batchsize=100\
     --cbc
 
-apptainer exec --nv --bind `pwd` dl4longcbc.sif ./test.py\
+apptainer exec --nv --bind `pwd` gw_hybridmfcnn.sif ./test.py\
     --outdir=data/model/$EXPERIMENTNAME/$MODELNAME/test_noise/\
     --modeldir=data/model/$EXPERIMENTNAME/$MODELNAME/\
     --datadir=data/dataset_250911/test/\

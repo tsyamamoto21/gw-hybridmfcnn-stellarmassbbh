@@ -20,7 +20,7 @@ cd $PBS_O_WORKDIR
 if [ ! -d $OUTPUTDIR ]; then
 	mkdir -p $OUTPUTDIR
 fi
-apptainer exec --nv --bind /home,/mnt dl4longcbc.sif ./mdc/generate_data.py\
+apptainer exec --nv --bind /home,/mnt gw_hybridmfcnn.sif ./mdc/generate_data.py\
 	-d $DATASETTYPE\
     -i $OUTPUT_INJECTION_FILE\
     -f $OUTPUT_FOREGROUND_FILE\
