@@ -249,20 +249,20 @@ def main(args):
         hp_fd, _ = get_fd_waveform(**params_tmp)
         template_bank['template'].append(hp_fd)
 
-    # # Create injection parameters
-    # gps_start_time = args.starttime
-    # for n in range(ninjfile):
-    #     # injection_file = f'{args.outdir}/{label}/injections_{n + args.offset:d}.hdf'
-    #     injection_file = os.path.join(outdir, f'injections_{n + args.offset:d}.hdf')
-    #     if n == ninjfile - 1:
-    #         if ndata % NINJECTION_PER_FILE == 0:
-    #             nsample = NINJECTION_PER_FILE
-    #         else:
-    #             nsample = int(ndata % NINJECTION_PER_FILE)
-    #     else:
-    #         nsample = NINJECTION_PER_FILE
-    #     create_injections(nsample, args.config, gps_start_time, injection_file, force=args.force)
-    #     gps_start_time += nsample * INJECTION_TIME_STEP
+    # Create injection parameters
+    gps_start_time = args.starttime
+    for n in range(ninjfile):
+        # injection_file = f'{args.outdir}/{label}/injections_{n + args.offset:d}.hdf'
+        injection_file = os.path.join(outdir, f'injections_{n + args.offset:d}.hdf')
+        if n == ninjfile - 1:
+            if ndata % NINJECTION_PER_FILE == 0:
+                nsample = NINJECTION_PER_FILE
+            else:
+                nsample = int(ndata % NINJECTION_PER_FILE)
+        else:
+            nsample = NINJECTION_PER_FILE
+        create_injections(nsample, args.config, gps_start_time, injection_file, force=args.force)
+        gps_start_time += nsample * INJECTION_TIME_STEP
 
     # Calculate SNR
     injectionfile_list = []
