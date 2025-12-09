@@ -7,9 +7,9 @@ import torch.nn as nn
 from torch.nn.functional import softmax
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
-import dl4longcbc.dataset_test as ds
-from dl4longcbc.net import instantiate_neuralnetwork
-from dl4longcbc.utils import if_not_exist_makedir
+import gw_hybridmfcnn.dataset_test as ds
+from gw_hybridmfcnn.net import instantiate_neuralnetwork
+from gw_hybridmfcnn.utils import if_not_exist_makedir
 
 
 # >>> test loop >>>

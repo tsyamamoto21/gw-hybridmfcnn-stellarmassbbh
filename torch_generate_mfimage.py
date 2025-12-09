@@ -12,7 +12,7 @@ from pycbc.filter import highpass
 from pycbc.psd.analytical import aLIGOZeroDetHighPower
 from pycbc.types import TimeSeries
 import pycbc.noise
-from dl4longcbc.utils import if_not_exist_makedir
+from gw_hybridmfcnn.utils import if_not_exist_makedir
 
 
 class SignalProcessingParameters:

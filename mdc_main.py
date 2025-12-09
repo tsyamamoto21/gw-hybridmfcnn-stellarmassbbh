@@ -2,7 +2,7 @@
 import os
 import time
 import h5py
-import pickle
+# import pickle
 import numpy as np
 from scipy.signal.windows import tukey, hann
 import logging
@@ -15,8 +15,8 @@ from pycbc.filter import highpass
 from pycbc.types import load_timeseries
 from pycbc.waveform import get_fd_waveform
 from pycbc.conversions import mass1_from_mchirp_eta, mass2_from_mchirp_eta
-from dl4longcbc.net import instantiate_neuralnetwork
-import dl4longcbc.dataset_test as ds
+from gw_hybridmfcnn.net import instantiate_neuralnetwork
+import gw_hybridmfcnn.dataset_test as ds
 
 
 class MDCResultTriplet:

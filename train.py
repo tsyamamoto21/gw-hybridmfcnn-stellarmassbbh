@@ -11,9 +11,9 @@ from torchinfo import summary
 from torchmetrics.classification import Accuracy
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
-import dl4longcbc.dataset_train as ds
-from dl4longcbc.net import instantiate_neuralnetwork
-import dl4longcbc.utils as utils
+import gw_hybridmfcnn.dataset_train as ds
+from gw_hybridmfcnn.net import instantiate_neuralnetwork
+import gw_hybridmfcnn.utils as utils
 
 
 # ----------------------------------------------------------------

@@ -66,7 +66,7 @@ class LoadZeroNoiseMatchedFilter(nn.Module):
             x = torch.zeros(size=self.shape, dtype=torch.complex64)
         else:
             x = torch.load(filepath, weights_only=False)
-            assert x.dtype == torch.complex64, "Loaded data is not torch.complex64."
+            assert x.dtype == torch.complex128, "Loaded data is not torch.complex128."
             assert x.size() == self.shape, f"Size is not appropriate, loaded size {x.size()}, required {self.shape}"
         return x
 
